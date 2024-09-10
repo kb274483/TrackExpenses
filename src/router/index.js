@@ -2,6 +2,7 @@ import { route } from 'quasar/wrappers';
 import {
   createRouter, createMemoryHistory, createWebHistory, createWebHashHistory,
 } from 'vue-router';
+import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import routes from './routes';
 
 /*
@@ -26,6 +27,19 @@ export default route((/* { store, ssrContext } */) => {
     // quasar.conf.js -> build -> vueRouterMode
     // quasar.conf.js -> build -> publicPath
     history: createHistory(process.env.VUE_ROUTER_BASE),
+  });
+
+  Router.beforeEach((to, from, next) => {
+    const auth = getAuth();
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
+    if (requiresAuth) {
+      onAuthStateChanged(auth, (user) => {
+        if (user) next();
+        else next({ name: 'login' });
+      });
+    } else {
+      next();
+    }
   });
 
   return Router;

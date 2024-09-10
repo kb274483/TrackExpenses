@@ -29,13 +29,14 @@ module.exports = configure((/* ctx */) => ({
   // --> boot files are part of "main.js"
   // https://v2.quasar.dev/quasar-cli-vite/boot-files
   boot: [
-
+    'firebase',
     'axios',
   ],
 
   // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#css
   css: [
     'app.scss',
+    'tailwind.css',
   ],
 
   // https://github.com/quasarframework/quasar/tree/dev/extras
@@ -59,7 +60,7 @@ module.exports = configure((/* ctx */) => ({
       node: 'node16',
     },
 
-    vueRouterMode: 'hash', // available values: 'hash', 'history'
+    vueRouterMode: 'history', // available values: 'hash', 'history'
     // vueRouterBase,
     // vueDevtools,
     // vueOptionsAPI: false,

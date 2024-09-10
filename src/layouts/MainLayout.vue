@@ -1,116 +1,92 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
+  <q-layout view="hHh LpR fFf">
+
+    <q-header elevated class="bg-secondary text-white">
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
+        <q-btn dense flat rzound icon="menu" @click="toggleLeftDrawer" />
 
         <q-toolbar-title>
-          Quasar App
+          <div class="tw-flex tw-justify-between tw-items-center">
+            <div>
+              <q-icon name="account_balance" class="iconStyle" />
+              Track expenses
+            </div>
+            <div class="tw-flex tw-items-center"
+              v-if="userToken !== null"
+            >
+              <div class="tw-w-10 tw-h-10 tw-rounded-md tw-overflow-hidden">
+                <img :src="userData.photoURL" alt="">
+              </div>
+              <q-btn dense flat rzound icon="logout" @click="logout" />
+            </div>
+          </div>
         </q-toolbar-title>
-
-        <div>Quasar v{{ $q.version }}</div>
       </q-toolbar>
     </q-header>
 
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-    >
-      <q-list>
-        <q-item-label
-          header
-        >
-          Essential Links
-        </q-item-label>
-
-        <EssentialLink
-          v-for="link in essentialLinks"
-          :key="link.title"
-          v-bind="link"
-        />
+    <q-drawer show-if-above v-model="leftDrawerOpen" side="left" bordered>
+      <div v-if="userToken"
+        class="tw-text-gray-600 tw-p-2"
+      >
+      </div>
+      <q-list bordered v-else>
+        <q-item v-ripple>
+          <q-item-section class="tw-text-gray-600">Please login first</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 
     <q-page-container>
       <router-view />
     </q-page-container>
+
   </q-layout>
 </template>
 
-<script>
-import { defineComponent, ref } from 'vue';
-import EssentialLink from 'components/EssentialLink.vue';
+<script setup>
+import { onMounted, ref } from 'vue';
+import { onAuthStateChanged, getAuth } from 'firebase/auth';
+import { useRouter } from 'vue-router';
 
-const linksList = [
-  {
-    title: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev',
-  },
-  {
-    title: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework',
-  },
-  {
-    title: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev',
-  },
-  {
-    title: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev',
-  },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev',
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev',
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev',
-  },
-];
+const $router = useRouter();
 
-export default defineComponent({
-  name: 'MainLayout',
+const leftDrawerOpen = ref(false);
+const toggleLeftDrawer = () => {
+  leftDrawerOpen.value = !leftDrawerOpen.value;
+};
+// firebase auth
+const auth = getAuth();
+const userToken = ref(null);
+const userData = ref(null);
 
-  components: {
-    EssentialLink,
-  },
-
-  setup() {
-    const leftDrawerOpen = ref(false);
-
-    return {
-      essentialLinks: linksList,
-      leftDrawerOpen,
-      toggleLeftDrawer() {
-        leftDrawerOpen.value = !leftDrawerOpen.value;
-      },
-    };
-  },
+// 登出
+const logout = async () => {
+  userToken.value = null;
+  userData.value = null;
+  try {
+    await auth.signOut();
+    $router.push('/login');
+  } catch (error) {
+    console.error('Error signing out:', error);
+  }
+};
+// 初始化
+onMounted(() => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      userToken.value = user.accessToken;
+      const { photoURL, email, displayName } = user;
+      userData.value = { photoURL, email, displayName };
+    }
+  });
 });
 </script>
+
+<style lang="scss" scoped>
+.iconStyle {
+  color: white;
+  cursor:pointer ;
+  font-size: 1.5em
+}
+
+</style>
