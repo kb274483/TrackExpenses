@@ -33,9 +33,13 @@ export default route((/* { store, ssrContext } */) => {
     const auth = getAuth();
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
     if (requiresAuth) {
-      onAuthStateChanged(auth, (user) => {
+      new Promise((resolve) => {
+        onAuthStateChanged(auth, (user) => {
+          resolve(user);
+        });
+      }).then((user) => {
         if (user) next();
-        else next({ name: 'login' });
+        else next('/login');
       });
     } else {
       next();

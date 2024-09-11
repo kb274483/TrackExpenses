@@ -1,6 +1,6 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card class="tw-w-2/3 lg:tw-w-1/4 tw-h-1/3 bg-secondary text-white">
+  <div class="flex flex-center containerHeight">
+    <q-card class="tw-w-2/3 lg:tw-w-1/4 bg-secondary text-white">
       <q-card-section class="tw-h-full tw-items-center">
         <p class="tw-text-center tw-text-2xl">Hello!</p>
         <div class="tw-flex tw-justify-end tw-border-t-2 tw-border-white tw-pt-4">
@@ -8,7 +8,7 @@
         </div>
       </q-card-section>
     </q-card>
-  </q-page>
+  </div>
 </template>
 
 <script setup>
@@ -37,3 +37,9 @@ onMounted(() => {
 });
 
 </script>
+
+<style scoped>
+.containerHeight{
+  height : calc(100dvh - 52px);
+}
+</style>
