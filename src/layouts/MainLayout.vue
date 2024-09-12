@@ -3,7 +3,10 @@
 
     <q-header elevated class="bg-secondary text-white">
       <q-toolbar>
-        <q-btn dense flat rzound icon="menu" @click="toggleLeftDrawer" />
+        <q-btn v-if="userToken !== null"
+          dense flat rzound icon="menu"
+          @click="toggleLeftDrawer"
+        />
 
         <q-toolbar-title>
           <div class="tw-flex tw-justify-between tw-items-center">

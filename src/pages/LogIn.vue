@@ -17,6 +17,9 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
 } from 'firebase/auth';
 import { onMounted } from 'vue';
+import {
+  db, ref, get, set,
+} from 'src/boot/firebase';
 
 const $router = useRouter();
 const auth = getAuth();
@@ -24,10 +27,30 @@ const provider = new GoogleAuthProvider();
 const login = async () => {
   try {
     const res = await signInWithPopup(auth, provider);
-    // 跳轉首頁
-    if (res) $router.push('/');
+    if (res) {
+      const { user } = res;
+      const userRef = ref(db, `/users/${user.uid}`); // user.uid be node key
+
+      // 檢查使用者是否已經註冊過
+      const snapshot = await get(userRef);
+      if (!snapshot.exists()) {
+        // 如果使用者不存在，則寫入資料
+        await set(userRef, {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+        });
+        console.log('User registered:', user.displayName);
+      } else {
+        console.log('User already registered:', user.displayName);
+      }
+
+      // 登入後跳轉首頁
+      $router.push('/');
+    }
   } catch (error) {
-    console.error(error);
+    console.error('Login error:', error);
   }
 };
 onMounted(() => {

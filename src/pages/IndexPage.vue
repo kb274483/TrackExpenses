@@ -27,8 +27,8 @@
 </template>
 
 <script setup>
+// import {
+//   db, ref, get, child,
+// } from 'src/boot/firebase';
 
 </script>
-
-<style scoped>
-</style>
