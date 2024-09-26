@@ -2,9 +2,9 @@
   <q-page class="tw-p-4">
     <!-- 新增消費記錄按鈕 -->
     <div class="tw-flex tw-justify-end">
-      <q-btn icon="add" color="primary" label="Add Expense"
-        outline style="color: goldenrod;"
-        @click="showAddExpenseDialog = true"
+      <q-btn icon="add" label="Add Expense"
+        push color="white" text-color="secondary"
+        @click="openExpenseDialog('add')"
       />
     </div>
 
@@ -14,57 +14,106 @@
         v-model="selectedMonth"
         :options="months"
         label="Select Month"
-        @input="fetchRecords"
+        @change="fetchRecords"
       />
     </div>
 
     <!-- 消費記錄列表 -->
     <q-list>
-      <q-item v-for="(record) in visibleRecords" :key="record.id" class="fade-in">
+      <q-item class="tw-p-2"
+        v-for="(record) in records" :key="record.id" :ref="setRecordRef"
+      >
         <q-item-section avatar>
-          <q-icon :name="getIconForType(record.type)" />
+          <q-icon :name="getIconForType(record.type)" class="tw-text-gray-600" />
         </q-item-section>
         <q-item-section>
-          <q-item-label>{{ record.description }}</q-item-label>
-          <q-item-label caption>
-            {{ record.amount }} {{ record.currency }} - {{ record.date }}
+          <q-item-label>
+            <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+              <strong>{{ record.description }}</strong>
+              <span class="tw-truncate">{{ record.payer.label}}</span>
+            </div>
+          </q-item-label>
+          <q-item-label>
+            <div class="tw-grid tw-grid-cols-2 tw-gap-2">
+              <strong>$:{{ record.amount }}</strong>
+              <span>{{ record.date.split('-')[1] }}-{{record.date.split('-')[2]}}</span>
+            </div>
           </q-item-label>
         </q-item-section>
+        <div class="tw-flex tw-gap-2">
+          <q-btn @click="openExpenseDialog('edit', record)"
+            icon="edit" push color="white" text-color="primary"
+          />
+          <q-btn @click="confirmDelete(record)"
+            push icon="delete" color="white" text-color="negative"
+          />
+        </div>
       </q-item>
     </q-list>
 
-    <!-- 加載更多的滾動效果 -->
-    <q-infinite-scroll @load="loadMoreRecords" />
-
-    <!-- 新增消費記錄對話框 -->
-    <q-dialog v-model="showAddExpenseDialog">
+    <!-- 新增與編輯消費記錄對話框 -->
+    <q-dialog v-model="showExpenseDialog">
       <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
         <q-card-section>
-          <div class="text-h6">Add New Expense</div>
-          <q-input v-model="newExpense.description" label="Description" />
-          <q-input v-model="newExpense.amount" label="Amount" type="number" />
-
-          <!-- 付款人選擇 -->
+          <div class="text-h6">{{ isEditMode ? 'Edit' : 'Add' }} Expense</div>
+          <q-input
+            v-model="expenseData.description"
+            label="Description"
+            :error="!expenseData.description && isSubmitted"
+            error-message="Description is required"
+          />
+          <q-input
+            v-model="expenseData.amount"
+            label="Amount"
+            type="number"
+            :error="!expenseData.amount && isSubmitted"
+            error-message="Amount is required"
+          />
           <q-select
-            v-model="newExpense.payer"
+            v-model="expenseData.payer"
             :options="members"
             label="Select Payer"
             option-value="value"
             option-label="label"
+            :error="!expenseData.payer && isSubmitted"
+            error-message="Payer is required"
           />
-
           <q-select
-            v-model="newExpense.type"
+            v-model="expenseData.type"
             :options="expenseTypes"
             label="Expense Type"
+            :error="!expenseData.type && isSubmitted"
+            error-message="Type is required"
           />
-
-          <q-input v-model="newExpense.date" label="Date" type="date" />
+          <q-input
+            v-model="expenseData.date"
+            label="Date"
+            type="date"
+            :error="!expenseData.date && isSubmitted"
+            error-message="Date is required"
+          />
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="negative" @click="showAddExpenseDialog = false" />
-          <q-btn flat label="Add" color="primary" @click="addExpense" />
+          <q-btn flat label="Cancel" color="negative" @click="showExpenseDialog = false" />
+          <q-btn flat label="Save" color="primary" @click="saveExpense" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- 確認刪除對話框 -->
+    <q-dialog v-model="showDeleteConfirmDialog">
+      <q-card>
+        <q-card-section>
+          <div class="tw-text-gray-600 tw-text-lg">你確定要刪除這筆消費嗎？</div>
+          <div class="tw-font-bold tw-mt-2">
+            {{ recordToDelete?.description }} - ${{ recordToDelete?.amount }}
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancel" color="primary" @click="showDeleteConfirmDialog = false" />
+          <q-btn flat label="Delete" color="negative" @click="deleteExpenseConfirmed" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -72,50 +121,152 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
 import {
-  db, ref as dbRef, get, set,
+  ref, onMounted, watch,
+} from 'vue';
+import {
+  db, ref as dbRef, get, set, remove,
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
-import { getAuth } from 'firebase/auth';
 import dayjs from 'dayjs';
 
-// 假設我們從路由參數中獲取群組名稱
+// 獲取群組名稱
 const route = useRoute();
 const { groupName } = route.params;
 
-// 獲取當前登入用戶
-const auth = getAuth();
-const user = auth.currentUser;
+// 狀態變數
+const showExpenseDialog = ref(false);
+const showDeleteConfirmDialog = ref(false);
+const isEditMode = ref(false);
+const isSubmitted = ref(false);
 
-// 選擇月份和當月記錄的狀態
-const selectedMonth = ref('');
-const months = ref([]); // 用來存儲過去半年的月份
-const records = ref([]); // 存放所有的消費記錄
-const visibleRecords = ref([]); // 存放可見的消費記錄
-const showAddExpenseDialog = ref(false);
-
-// 存放群組成員
-const members = ref([]); // 用來存儲群組中的成員
-// 消費類型選項
-const expenseTypes = ref([
-  { label: 'Transportation', value: 'transportation', icon: 'directions_bus' },
-  { label: 'Food', value: 'food', icon: 'restaurant' },
-  { label: 'Entertainment', value: 'entertainment', icon: 'theaters' },
-  { label: 'Pets', value: 'pets', icon: 'pets' },
-  { label: 'Housing', value: 'housing', icon: 'home' },
-  { label: 'Utilities', value: 'utilities', icon: 'bolt' },
-  { label: 'Daily Supplies', value: 'supplies', icon: 'shopping_cart' },
-  { label: 'Other', value: 'other', icon: 'more_horiz' },
-]);
-
-// 新增消費記錄的數據
-const newExpense = ref({
+const expenseData = ref({
   description: '',
   amount: 0,
-  date: new Date().toISOString().slice(0, 10), // 預設為當前日期
-  payer: '', // 預設付款人
+  date: new Date().toISOString().slice(0, 10),
+  payer: '',
+  type: '',
 });
+
+const recordToDelete = ref(null);
+const members = ref([]);
+const expenseTypes = ref([
+  { label: 'Transportation-交通', value: 'transportation', icon: 'directions_bus' },
+  { label: 'Food-飲食', value: 'food', icon: 'restaurant' },
+  { label: 'Entertainment-娛樂', value: 'entertainment', icon: 'theaters' },
+  { label: 'Pets-寵物', value: 'pets', icon: 'pets' },
+  { label: 'Housing-住家', value: 'housing', icon: 'home' },
+  { label: 'Daily Supplies-日常用品', value: 'supplies', icon: 'shopping_cart' },
+  { label: 'Other-其他', value: 'other', icon: 'more_horiz' },
+]);
+
+const records = ref([]);
+const selectedMonth = ref('');
+const months = ref([]);
+
+// 開啟對話框
+const openExpenseDialog = (mode, record = null) => {
+  isSubmitted.value = false;
+  if (mode === 'add') {
+    isEditMode.value = false;
+    expenseData.value = {
+      description: '',
+      amount: 0,
+      date: new Date().toISOString().slice(0, 10),
+      payer: '',
+      type: '',
+    };
+  } else if (mode === 'edit' && record) {
+    isEditMode.value = true;
+    expenseData.value = { ...record };
+  }
+  showExpenseDialog.value = true;
+};
+
+const fetchMembers = async () => {
+  const groupRef = dbRef(db, `/groups/${groupName}/members`);
+  const snapshot = await get(groupRef);
+
+  if (snapshot.exists()) {
+    members.value = Object.values(snapshot.val()).map((member) => ({
+      label: member.name,
+      value: member.id,
+    }));
+  }
+};
+
+// 加載消費記錄和群組成員
+const fetchRecords = async () => {
+  const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
+  const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
+  const snapshot = await get(groupRef);
+
+  if (snapshot.exists()) {
+    records.value = Object.values(snapshot.val()).map((record) => ({
+      ...record,
+      show: false,
+    })).sort((a, b) => (dayjs(b.date).isAfter(dayjs(a.date)) ? 1 : -1));
+  } else {
+    records.value = [];
+  }
+};
+
+watch(selectedMonth, fetchRecords);
+
+// 確認刪除
+const confirmDelete = (record) => {
+  recordToDelete.value = record;
+  showDeleteConfirmDialog.value = true;
+};
+
+// 刪除消費記錄
+const deleteExpenseConfirmed = async () => {
+  const month = recordToDelete.value.date.slice(0, 7);
+  await remove(dbRef(db, `/groups/${groupName}/expenses/${month}/${recordToDelete.value.id}`));
+  showDeleteConfirmDialog.value = false;
+  fetchRecords();
+};
+
+// 保存消費記錄
+const saveExpense = async () => {
+  isSubmitted.value = true;
+
+  if (!expenseData.value.description || !expenseData.value.amount || !expenseData.value.payer
+    || !expenseData.value.type || !expenseData.value.date) {
+    return;
+  }
+
+  const month = expenseData.value.date.slice(0, 7);
+  const recordId = expenseData.value.id || Date.now().toString();
+  const record = {
+    ...expenseData.value,
+    id: recordId,
+    members: members.value,
+  };
+
+  await set(dbRef(db, `/groups/${groupName}/expenses/${month}/${recordId}`), record);
+  showExpenseDialog.value = false;
+  fetchRecords();
+};
+
+// 使用 IntersectionObserver 判斷元素是否進入視窗
+const setRecordRef = (el) => {
+  if (!el) return;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('fade-in');
+      } else {
+        entry.target.classList.remove('fade-in');
+      }
+    });
+  }, {
+    root: null,
+    threshold: 0.1,
+  });
+
+  observer.observe(el.$el);
+};
 
 // 生成過去半年的月份
 const generateMonths = () => {
@@ -127,92 +278,37 @@ const generateMonths = () => {
       value: month.format('YYYY-MM'),
     });
   }
-  // 預設為當前月份
   selectedMonth.value = months.value[0].value;
 };
 
-// 獲取群組成員
-const fetchMembers = async () => {
-  const groupRef = dbRef(db, `/groups/${groupName}/members`);
-  const snapshot = await get(groupRef);
-
-  if (snapshot.exists()) {
-    members.value = Object.values(snapshot.val()).map((member) => ({
-      label: member.name,
-      value: member.id,
-    }));
-    console.log('Members:', members.value);
-    // 確保user已定義，並將預設付款人設為當前登入用戶
-    if (user) {
-      newExpense.value.payer = members.value.find((m) => m.value === user.uid)?.value;
-    }
-  }
-};
-
-// 加載當月消費記錄
-const fetchRecords = async () => {
-  const month = selectedMonth.value || new Date().toISOString().slice(0, 7); // 當前月份
-  const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
-  const snapshot = await get(groupRef);
-
-  if (snapshot.exists()) {
-    records.value = Object.values(snapshot.val());
-    visibleRecords.value = records.value.slice(0, 10); // 首次顯示前10筆記錄
-  }
-};
-
-// 滾動加載更多的消費記錄
-const loadMoreRecords = () => {
-  const currentLength = visibleRecords.value.length;
-  if (currentLength < records.value.length) {
-    const nextRecords = records.value.slice(currentLength, currentLength + 10);
-    visibleRecords.value.push(...nextRecords);
-  }
-};
-
-// 新增消費記錄
-const addExpense = async () => {
-  const month = newExpense.value.date.slice(0, 7);
-  // const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
-  const newRecord = {
-    id: Date.now().toString(),
-    description: newExpense.value.description,
-    amount: newExpense.value.amount,
-    currency: 'TWD',
-    date: newExpense.value.date,
-    payer: newExpense.value.payer,
-    type: newExpense.value.type,
-  };
-
-  await set(dbRef(db, `/groups/${groupName}/expenses/${month}/${newRecord.id}`), newRecord);
-  showAddExpenseDialog.value = false;
-
-  // 添加完畢後刷新記錄列表
+// 初始化數據
+onMounted(() => {
+  generateMonths();
+  fetchMembers();
   fetchRecords();
-};
+});
 
+// 根據消費類型獲取圖示
 const getIconForType = (type) => {
-  const typeInfo = expenseTypes.value.find((t) => t.value === type);
+  const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
   return typeInfo ? typeInfo.icon : 'more_horiz';
 };
-
-// 初始加載消費記錄和群組成員
-onMounted(() => {
-  generateMonths(); // 生成月份選項
-  fetchRecords(); // 加載當月的記錄
-  fetchMembers(); // 加載群組成員
-});
 </script>
 
 <style scoped>
 .fade-in {
-  animation: fadeIn 1s ease-in;
+  animation: fadeIn 0.6s ease-in-out forwards;
+  opacity: 0;
+}
+
+.fade-out {
+  opacity: 0;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;

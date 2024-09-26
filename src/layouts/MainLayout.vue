@@ -35,36 +35,38 @@
             <q-item-section avatar>
               <q-icon name="home" />
             </q-item-section>
-            <q-item-section>Home</q-item-section>
+            <q-item-section class="tw-font-bold tw-text-lg">
+              Home
+            </q-item-section>
           </q-item>
 
           <!-- 群組列表 -->
           <template v-if="userGroups.length > 0">
             <q-expansion-item v-for="group in userGroups" :key="group.name"
-              expand-icon="arrow_drop_down" class="tw-font-bold tw-text-xl tw-items-center"
+              expand-icon="arrow_drop_down" class="tw-font-semibold tw-text-lg tw-items-center"
             >
               <template v-slot:header>
                 {{ group.name }}
               </template>
               <q-item clickable v-ripple @click="goToGroupPage(group.name, 'records')">
                 <q-item-section avatar>
-                  <q-icon name="receipt" />
+                  <q-icon name="receipt_long" />
                 </q-item-section>
-                <q-item-section>Expense Records</q-item-section>
+                <q-item-section>消費紀錄</q-item-section>
               </q-item>
 
               <q-item clickable v-ripple @click="goToGroupPage(group.name, 'analysis')">
                 <q-item-section avatar>
                   <q-icon name="analytics" />
                 </q-item-section>
-                <q-item-section>Expense Analysis</q-item-section>
+                <q-item-section>消費分析</q-item-section>
               </q-item>
 
               <q-item clickable v-ripple @click="goToGroupPage(group.name, 'settlement')">
                 <q-item-section avatar>
-                  <q-icon name="money" />
+                  <q-icon name="price_check" />
                 </q-item-section>
-                <q-item-section>Settlement</q-item-section>
+                <q-item-section>帳目結算</q-item-section>
               </q-item>
             </q-expansion-item>
           </template>
@@ -132,7 +134,6 @@ const loadUserGroups = async () => {
         userGroups.value = Object.keys(groups).map((groupName) => ({
           name: groupName,
         }));
-        console.log('User groups:', userGroups.value);
       }
     }
   } catch (error) {
