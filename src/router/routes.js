@@ -26,7 +26,7 @@ const routes = [
       {
         path: '/group/:groupName/settlement',
         name: 'settlement',
-        component: () => import('pages/Settlement.vue'),
+        component: () => import('src/pages/SpendingResults.vue'),
         meta: { requiresAuth: true },
         props: true, // 傳遞 groupName 給 Settlement.vue
       },

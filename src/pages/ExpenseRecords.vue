@@ -14,7 +14,6 @@
         v-model="selectedMonth"
         :options="months"
         label="Select Month"
-        @change="fetchRecords"
       />
     </div>
 
