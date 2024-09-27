@@ -2,7 +2,7 @@
   "name": "accounting-pwa",
   "version": "0.0.1",
   "description": "A Accounting App",
-  "productName": "accounting app",
+  "productName": "Track Expenses",
   "author": "Roy <kb274483@gmail.com>",
   "private": true,
   "scripts": {
