@@ -71,6 +71,13 @@
                 </q-item-section>
                 <q-item-section>帳目結算</q-item-section>
               </q-item>
+
+              <q-item clickable v-ripple @click="goToGroupPage(group.name, 'members')">
+                <q-item-section avatar>
+                  <q-icon name="groups_2" />
+                </q-item-section>
+                <q-item-section>群組成員</q-item-section>
+              </q-item>
             </q-expansion-item>
           </template>
 

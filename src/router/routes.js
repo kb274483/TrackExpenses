@@ -14,21 +14,28 @@ const routes = [
         name: 'records',
         component: () => import('pages/ExpenseRecords.vue'),
         meta: { requiresAuth: true },
-        props: true, // 傳遞 groupName 給 ExpenseRecords.vue
+        props: true, // 傳遞 groupName
       },
       {
         path: '/group/:groupName/analysis',
         name: 'analysis',
         component: () => import('pages/ExpenseAnalysis.vue'),
         meta: { requiresAuth: true },
-        props: true, // 傳遞 groupName 給 ExpenseAnalysis.vue
+        props: true, // 傳遞 groupName
       },
       {
         path: '/group/:groupName/settlement',
         name: 'settlement',
         component: () => import('src/pages/SpendingResults.vue'),
         meta: { requiresAuth: true },
-        props: true, // 傳遞 groupName 給 Settlement.vue
+        props: true, // 傳遞 groupName
+      },
+      {
+        path: '/group/:groupName/members',
+        name: 'members',
+        component: () => import('src/pages/GroupMembers.vue'),
+        meta: { requiresAuth: true },
+        props: true, // 傳遞 groupName
       },
     ],
   },

@@ -1,0 +1,147 @@
+<template>
+  <q-page class="tw-p-4">
+    <div class="tw-font-semibold tw-text-lg tw-text-gray-600">消費分析</div>
+
+    <!-- 月份選擇器 -->
+    <div class="tw-mb-4">
+      <q-select
+        v-model="selectedMonth"
+        :options="months"
+        label="Select Month"
+        @update:model-value="calculateCategoryTotals"
+      />
+    </div>
+
+    <!-- 圓餅圖 -->
+    <div class="tw-flex tw-justify-center">
+      <div id="pieChart" style="width: 400px; height: 400px;"></div>
+    </div>
+
+    <!-- 消費類別表格 -->
+    <q-table
+      :rows="categoryTotals"
+      :columns="columns"
+      row-key="category"
+      :rows-per-page-label="[0]"
+      v-model:pagination="pagination"
+      flat
+    />
+  </q-page>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
+import { db, ref as dbRef, get } from 'src/boot/firebase';
+import * as echarts from 'echarts';
+import dayjs from 'dayjs';
+
+// 獲取群組名稱
+const route = useRoute();
+const { groupName } = route.params;
+
+// 狀態變數
+const selectedMonth = ref('');
+const months = ref([]);
+const categoryTotals = ref([]);
+
+// 分頁
+const pagination = ref({
+  rowsPerPage: 10,
+});
+
+// 消費類別和圖表
+const chart = ref(null);
+const expenseTypes = ref([
+  { label: 'Transportation-交通', value: 'transportation' },
+  { label: 'Food-飲食', value: 'food' },
+  { label: 'Entertainment-娛樂', value: 'entertainment' },
+  { label: 'Pets-寵物', value: 'pets' },
+  { label: 'Housing-住家', value: 'housing' },
+  { label: 'Daily Supplies-日常用品', value: 'supplies' },
+  { label: 'Other-其他', value: 'other' },
+]);
+
+const columns = [
+  {
+    name: 'category', label: '消費類別', align: 'left', field: 'category',
+  },
+  {
+    name: 'total', label: '總額', align: 'right', field: 'total',
+  },
+];
+
+// 生成月份選項
+const generateMonths = () => {
+  const today = dayjs();
+  for (let i = 0; i < 6; i++) {
+    const month = today.subtract(i, 'month');
+    months.value.push({
+      label: month.format('MMMM YYYY'),
+      value: month.format('YYYY-MM'),
+    });
+  }
+  selectedMonth.value = months.value[0].value;
+};
+
+// 更新圓餅圖
+const updatePieChart = (data) => {
+  const chartData = data
+    .filter((item) => item.total > 0)
+    .map((item) => ({ value: item.total, name: item.category }));
+
+  chart.value.setOption({
+    tooltip: { trigger: 'item' },
+    series: [
+      {
+        type: 'pie',
+        radius: '50%',
+        data: chartData,
+        emphasis: {
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' },
+        },
+      },
+    ],
+  });
+};
+
+// 計算每個消費類別的總額
+const calculateCategoryTotals = async () => {
+  const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
+  const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
+  const snapshot = await get(groupRef);
+
+  if (snapshot.exists()) {
+    const expenses = Object.values(snapshot.val());
+    const totals = {};
+
+    expenseTypes.value.forEach((type) => {
+      totals[type.value] = 0;
+    });
+
+    expenses.forEach((expense) => {
+      totals[expense.type.value] += parseFloat(expense.amount);
+    });
+
+    categoryTotals.value = expenseTypes.value.map((type) => ({
+      category: type.label,
+      total: totals[type.value].toFixed(2),
+    }));
+
+    updatePieChart(categoryTotals.value);
+  } else {
+    categoryTotals.value = [];
+    updatePieChart([]);
+  }
+};
+
+// 初始化圖表和數據
+onMounted(() => {
+  generateMonths();
+
+  const chartDom = document.getElementById('pieChart');
+  chart.value = echarts.init(chartDom);
+  calculateCategoryTotals();
+});
+
+</script>
