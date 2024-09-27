@@ -114,7 +114,6 @@ const generateSettlementList = (debtMap) => {
 
 // 計算 消費結果
 const calculateSettlements = async () => {
-  console.log('SLE');
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
   const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
   const snapshot = await get(groupRef);

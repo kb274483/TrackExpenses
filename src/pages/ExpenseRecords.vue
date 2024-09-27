@@ -129,6 +129,7 @@ import {
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
 import dayjs from 'dayjs';
+import { getAuth } from 'firebase/auth';
 
 // 儲存DB監聽器
 let dbValueWatch = null;
@@ -136,6 +137,11 @@ let dbValueWatch = null;
 // 獲取群組名稱
 const route = useRoute();
 const { groupName } = route.params;
+
+// 獲取當前用戶
+const auth = getAuth();
+const user = auth.currentUser;
+console.log(user);
 
 // 狀態變數
 const showExpenseDialog = ref(false);
@@ -176,7 +182,7 @@ const openExpenseDialog = (mode, record = null) => {
       description: '',
       amount: 0,
       date: new Date().toISOString().slice(0, 10),
-      payer: '',
+      payer: user ? { label: user.displayName, value: user.uid } : '',
       type: '',
     };
   } else if (mode === 'edit' && record) {
