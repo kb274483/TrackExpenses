@@ -43,7 +43,10 @@
           <!-- 群組列表 -->
           <template v-if="userGroups.length > 0">
             <q-expansion-item v-for="group in userGroups" :key="group.name"
-              expand-icon="arrow_drop_down" class="tw-font-semibold tw-text-lg tw-items-center"
+              expand-icon="arrow_drop_down"
+              class="tw-font-semibold tw-text-lg tw-items-center
+                tw-border tw-rounded tw-border-gray-300
+              "
             >
               <template v-slot:header>
                 {{ group.name }}

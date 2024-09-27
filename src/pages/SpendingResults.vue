@@ -7,7 +7,7 @@
         v-model="selectedMonth"
         :options="months"
         label="Select Month"
-        @change="calculateSettlements"
+        @update:model-value="calculateSettlements"
       />
     </div>
 
@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { db, ref as dbRef, get } from 'src/boot/firebase';
 import dayjs from 'dayjs';
@@ -114,6 +114,7 @@ const generateSettlementList = (debtMap) => {
 
 // 計算 消費結果
 const calculateSettlements = async () => {
+  console.log('SLE');
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
   const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
   const snapshot = await get(groupRef);
@@ -150,12 +151,12 @@ const calculateSettlements = async () => {
   }
 };
 
-watch(selectedMonth, calculateSettlements);
+// watch(selectedMonth, calculateSettlements);
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   generateMonths();
-  fetchMembers();
+  await fetchMembers();
   calculateSettlements();
 });
 </script>

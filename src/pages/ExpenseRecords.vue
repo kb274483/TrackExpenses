@@ -14,6 +14,7 @@
         v-model="selectedMonth"
         :options="months"
         label="Select Month"
+        @update:model-value="fetchRecords"
       />
     </div>
 
@@ -121,13 +122,16 @@
 
 <script setup>
 import {
-  ref, onMounted, watch,
+  ref, onMounted, onUnmounted,
 } from 'vue';
 import {
-  db, ref as dbRef, get, set, remove,
+  db, ref as dbRef, get, set, remove, onValue,
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
 import dayjs from 'dayjs';
+
+// 儲存DB監聽器
+let dbValueWatch = null;
 
 // 獲取群組名稱
 const route = useRoute();
@@ -198,19 +202,18 @@ const fetchMembers = async () => {
 const fetchRecords = async () => {
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
   const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
-  const snapshot = await get(groupRef);
 
-  if (snapshot.exists()) {
-    records.value = Object.values(snapshot.val()).map((record) => ({
-      ...record,
-      show: false,
-    })).sort((a, b) => (dayjs(b.date).isAfter(dayjs(a.date)) ? 1 : -1));
-  } else {
-    records.value = [];
-  }
+  dbValueWatch = onValue(groupRef, (snapshot) => {
+    if (snapshot.exists()) {
+      records.value = Object.values(snapshot.val()).map((record) => ({
+        ...record,
+        show: false,
+      })).sort((a, b) => (dayjs(b.date).isAfter(dayjs(a.date)) ? 1 : -1));
+    } else {
+      records.value = [];
+    }
+  });
 };
-
-watch(selectedMonth, fetchRecords);
 
 // 確認刪除
 const confirmDelete = (record) => {
@@ -280,6 +283,12 @@ const generateMonths = () => {
   selectedMonth.value = months.value[0].value;
 };
 
+// 根據消費類型獲取圖示
+const getIconForType = (type) => {
+  const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
+  return typeInfo ? typeInfo.icon : 'more_horiz';
+};
+
 // 初始化數據
 onMounted(() => {
   generateMonths();
@@ -287,11 +296,12 @@ onMounted(() => {
   fetchRecords();
 });
 
-// 根據消費類型獲取圖示
-const getIconForType = (type) => {
-  const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
-  return typeInfo ? typeInfo.icon : 'more_horiz';
-};
+onUnmounted(() => {
+  // 在組件卸載時取消監聽
+  if (dbValueWatch) {
+    dbValueWatch();
+  }
+});
 </script>
 
 <style scoped>
