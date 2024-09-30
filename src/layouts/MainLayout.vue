@@ -51,32 +51,49 @@
               <template v-slot:header>
                 {{ group.name }}
               </template>
-              <q-item clickable v-ripple @click="goToGroupPage(group.name, 'records')">
+              <q-item clickable v-ripple
+                @click="goToGroupPage(group.name, 'records')"
+              >
                 <q-item-section avatar>
                   <q-icon name="receipt_long" />
                 </q-item-section>
                 <q-item-section>消費紀錄</q-item-section>
               </q-item>
 
-              <q-item clickable v-ripple @click="goToGroupPage(group.name, 'analysis')">
+              <q-item clickable v-ripple
+                @click="goToGroupPage(group.name, 'analysis')"
+              >
                 <q-item-section avatar>
                   <q-icon name="analytics" />
                 </q-item-section>
                 <q-item-section>消費分析</q-item-section>
               </q-item>
 
-              <q-item clickable v-ripple @click="goToGroupPage(group.name, 'settlement')">
+              <q-item clickable v-ripple
+                @click="goToGroupPage(group.name, 'settlement')"
+              >
                 <q-item-section avatar>
                   <q-icon name="price_check" />
                 </q-item-section>
                 <q-item-section>帳目結算</q-item-section>
               </q-item>
 
-              <q-item clickable v-ripple @click="goToGroupPage(group.name, 'members')">
+              <q-item clickable v-ripple
+                @click="goToGroupPage(group.name, 'members')"
+              >
                 <q-item-section avatar>
                   <q-icon name="groups_2" />
                 </q-item-section>
                 <q-item-section>群組成員</q-item-section>
+              </q-item>
+
+              <q-item clickable v-ripple
+                @click="goToGroupPage(group.name, 'setting')"
+              >
+                <q-item-section avatar>
+                  <q-icon name="settings" />
+                </q-item-section>
+                <q-item-section>群組設定</q-item-section>
               </q-item>
             </q-expansion-item>
           </template>

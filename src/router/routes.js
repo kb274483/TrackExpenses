@@ -37,6 +37,13 @@ const routes = [
         meta: { requiresAuth: true },
         props: true, // 傳遞 groupName
       },
+      {
+        path: '/group/:groupName/setting',
+        name: 'setting',
+        component: () => import('src/pages/GroupSetting.vue'),
+        meta: { requiresAuth: true },
+        props: true, // 傳遞 groupName
+      },
     ],
   },
   {

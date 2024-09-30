@@ -41,7 +41,6 @@ const login = async () => {
           email: user.email,
           photoURL: user.photoURL,
         });
-        console.log('User registered:', user.displayName);
       } else {
         console.log('User already registered:', user.displayName);
       }

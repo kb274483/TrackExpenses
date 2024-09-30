@@ -52,7 +52,7 @@
     </q-list>
 
     <!-- 新增與編輯消費記錄對話框 -->
-    <q-dialog v-model="showExpenseDialog">
+    <q-dialog persistent v-model="showExpenseDialog">
       <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
         <q-card-section>
           <div class="text-h6">{{ isEditMode ? 'Edit' : 'Add' }} Expense</div>
@@ -102,7 +102,7 @@
     </q-dialog>
 
     <!-- 確認刪除對話框 -->
-    <q-dialog v-model="showDeleteConfirmDialog">
+    <q-dialog persistent v-model="showDeleteConfirmDialog">
       <q-card>
         <q-card-section>
           <div class="tw-text-gray-600 tw-text-lg">你確定要刪除這筆消費嗎？</div>
@@ -122,7 +122,7 @@
 
 <script setup>
 import {
-  ref, onMounted, onUnmounted,
+  ref, onMounted, onUnmounted, watch,
 } from 'vue';
 import {
   db, ref as dbRef, get, set, remove, onValue,
@@ -137,11 +137,11 @@ let dbValueWatch = null;
 // 獲取群組名稱
 const route = useRoute();
 const { groupName } = route.params;
+const watchGroupName = ref(groupName);
 
 // 獲取當前用戶
 const auth = getAuth();
 const user = auth.currentUser;
-console.log(user);
 
 // 狀態變數
 const showExpenseDialog = ref(false);
@@ -193,7 +193,7 @@ const openExpenseDialog = (mode, record = null) => {
 };
 
 const fetchMembers = async () => {
-  const groupRef = dbRef(db, `/groups/${groupName}/members`);
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/members`);
   const snapshot = await get(groupRef);
 
   if (snapshot.exists()) {
@@ -207,7 +207,7 @@ const fetchMembers = async () => {
 // 加載消費記錄和群組成員
 const fetchRecords = async () => {
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
-  const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
 
   dbValueWatch = onValue(groupRef, (snapshot) => {
     if (snapshot.exists()) {
@@ -230,7 +230,7 @@ const confirmDelete = (record) => {
 // 刪除消費記錄
 const deleteExpenseConfirmed = async () => {
   const month = recordToDelete.value.date.slice(0, 7);
-  await remove(dbRef(db, `/groups/${groupName}/expenses/${month}/${recordToDelete.value.id}`));
+  await remove(dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}/${recordToDelete.value.id}`));
   showDeleteConfirmDialog.value = false;
   fetchRecords();
 };
@@ -252,7 +252,7 @@ const saveExpense = async () => {
     members: members.value,
   };
 
-  await set(dbRef(db, `/groups/${groupName}/expenses/${month}/${recordId}`), record);
+  await set(dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}/${recordId}`), record);
   showExpenseDialog.value = false;
   fetchRecords();
 };
@@ -294,6 +294,16 @@ const getIconForType = (type) => {
   const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
   return typeInfo ? typeInfo.icon : 'more_horiz';
 };
+
+watch(
+  () => route.params.groupName, // 監聽路由參數中的 groupName
+  async (newGroupName) => {
+    watchGroupName.value = newGroupName;
+    await fetchMembers();
+    await fetchRecords();
+  },
+  { immediate: true }, // 當組件初始化時立即執行一次
+);
 
 // 初始化數據
 onMounted(() => {

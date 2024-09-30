@@ -16,9 +16,10 @@
         </div>
 
         <!-- 群組創建者，顯示移除成員按鈕 -->
-        <q-btn v-if="isGroupCreator"
+        <!-- <q-btn v-if="isGroupCreator"
           icon="delete" color="negative"
-          @click="confirmDeleteMember(member)" />
+          @click="confirmDeleteMember(member)"
+        /> -->
       </q-item>
     </q-list>
 
@@ -78,10 +79,10 @@ const fetchGroupMembers = async () => {
 };
 
 // 確認刪除成員前的提示
-const confirmDeleteMember = (member) => {
-  memberToDelete.value = member;
-  showAlert(`你確定要刪除 ${member.name} 嗎？`, true);
-};
+// const confirmDeleteMember = (member) => {
+//   memberToDelete.value = member;
+//   showAlert(`你確定要刪除 ${member.name} 嗎？`, true);
+// };
 
 // 移除成員功能
 const removeMember = async () => {

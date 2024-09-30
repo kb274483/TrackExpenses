@@ -24,7 +24,7 @@
       </q-card-actions>
 
       <!-- 創建群組對話框 -->
-      <q-dialog v-model="showCreateGroup" >
+      <q-dialog persistent v-model="showCreateGroup" >
         <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
           <q-card-section>
             <div class="text-h6">Create a Group</div>
@@ -40,7 +40,7 @@
       </q-dialog>
 
       <!-- 加入群組對話框 -->
-      <q-dialog v-model="showJoinGroup">
+      <q-dialog persistent v-model="showJoinGroup">
         <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
           <q-card-section>
             <div class="text-h6">Join a Group</div>
