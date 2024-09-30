@@ -10,8 +10,10 @@
     </div>
 
     <!-- 固定支出列表 -->
-    <q-list bordered class="tw-rounded">
-      <q-item v-for="(expense, index) in fixedExpenses" :key="index">
+    <q-list >
+      <q-item v-for="(expense, index) in fixedExpenses" :key="index"
+        class="tw-border tw-border-gray-300 tw-rounded tw-my-2"
+      >
         <div class="tw-grid tw-grid-cols-6 tw-gap-2">
           <div class="tw-col-span-2">
             <span class="block tw-font-bold">{{ expense.name }}</span>
@@ -24,12 +26,11 @@
             </span>
             付款
           </div>
+          <q-btn icon="delete"
+            color="negative" flat
+            @click="deleteFixedExpense(index)"
+          />
         </div>
-        <q-btn icon="delete"
-          class="tw-ml-auto"
-          color="negative" flat
-          @click="deleteFixedExpense(index)"
-        />
       </q-item>
     </q-list>
 
