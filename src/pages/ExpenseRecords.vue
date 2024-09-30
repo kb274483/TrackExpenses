@@ -168,7 +168,9 @@ const expenseTypes = ref([
   { label: 'Daily Supplies-日常用品', value: 'supplies', icon: 'shopping_cart' },
   { label: 'Other-其他', value: 'other', icon: 'more_horiz' },
   // 固定支出
-  { label: 'Fixed Expense-固定支出', value: 'fixed', icon: 'stars' },
+  {
+    label: 'Fixed Expense-固定支出', value: 'fixed', icon: 'stars', disable: true,
+  },
 ]);
 
 const records = ref([]);

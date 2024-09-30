@@ -60,6 +60,7 @@ const expenseTypes = ref([
   { label: 'Housing-住家', value: 'housing' },
   { label: 'Daily Supplies-日常用品', value: 'supplies' },
   { label: 'Other-其他', value: 'other' },
+  { label: 'Fixed Expense-固定支出', value: 'fixed' },
 ]);
 
 const columns = [
