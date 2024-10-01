@@ -38,7 +38,12 @@
             color: props.row.color, fontWeight: 'bold' ,fontSize: '1.2em'
           }"
         >
-          {{ props.value }}
+          <span v-if="props.col.name === 'total'">
+            $ {{ props.row.total }}
+          </span>
+          <span v-else>
+            {{ props.row[props.col.name] }}
+          </span>
         </q-td>
       </template>
     </q-table>
