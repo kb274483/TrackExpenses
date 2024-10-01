@@ -1,7 +1,14 @@
 <template>
-  <q-page class="tw-p-4">
+  <q-page class="tw-py-4 tw-px-2">
     <!-- 新增消費記錄按鈕 -->
-    <div class="tw-flex tw-justify-end">
+    <div class="tw-flex tw-justify-between tw-items-center">
+      <div class="tw-relative">
+        <q-icon name="badge"
+          class="tw-font-bold tw-text-gray-600 tw-text-2xl tw-relative -tw-top-1"
+        />
+        <span class="tw-font-bold tw-text-gray-600 tw-text-lg">{{ watchGroupName }}</span>
+        消費紀錄
+      </div>
       <q-btn icon="add" label="Add Expense"
         push color="white" text-color="secondary"
         @click="openExpenseDialog('add')"

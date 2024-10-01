@@ -1,6 +1,12 @@
 <template>
   <q-page class="tw-p-4">
-    <div class="tw-font-semibold tw-text-lg tw-text-gray-600">群組設定</div>
+    <div class="tw-relative">
+        <q-icon name="badge"
+          class="tw-font-bold tw-text-gray-600 tw-text-2xl tw-relative -tw-top-1"
+        />
+        <span class="tw-font-bold tw-text-gray-600 tw-text-lg">{{ watchGroupName }}</span>
+        群組設定
+      </div>
     <!-- 新增固定支出按鈕 -->
     <div class="tw-flex tw-justify-end tw-mb-4">
       <q-btn icon="add" label="Add fixed expenses"

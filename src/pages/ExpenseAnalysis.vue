@@ -1,6 +1,12 @@
 <template>
   <q-page class="tw-p-4">
-    <div class="tw-font-semibold tw-text-lg tw-text-gray-600">消費分析</div>
+    <div class="tw-relative">
+      <q-icon name="badge"
+        class="tw-font-bold tw-text-gray-600 tw-text-2xl tw-relative -tw-top-1"
+      />
+      <span class="tw-font-bold tw-text-gray-600 tw-text-lg">{{ watchGroupName }}</span>
+      消費分析
+    </div>
 
     <!-- 月份選擇器 -->
     <div class="tw-mb-4">
@@ -25,12 +31,22 @@
       :rows-per-page-label="[0]"
       v-model:pagination="pagination"
       flat
-    />
+    >
+      <template v-slot:body-cell="props">
+        <q-td :props="props"
+          :style="{
+            color: props.row.color, fontWeight: 'bold' ,fontSize: '1.2em'
+          }"
+        >
+          {{ props.value }}
+        </q-td>
+      </template>
+    </q-table>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { db, ref as dbRef, get } from 'src/boot/firebase';
 import * as echarts from 'echarts';
@@ -39,6 +55,7 @@ import dayjs from 'dayjs';
 // 獲取群組名稱
 const route = useRoute();
 const { groupName } = route.params;
+const watchGroupName = ref(groupName);
 
 // 狀態變數
 const selectedMonth = ref('');
@@ -62,6 +79,18 @@ const expenseTypes = ref([
   { label: 'Other-其他', value: 'other' },
   { label: 'Fixed Expense-固定支出', value: 'fixed' },
 ]);
+
+// 每個消費類別對應的顏色
+const categoryColors = {
+  transportation: '#879AD7',
+  food: '#B2DB9E',
+  entertainment: '#FBD88A',
+  pets: '#F39393',
+  housing: '#9DD2E7',
+  'daily supplies': '#75BD9C',
+  other: '#FCA885',
+  'fixed expense': '#9D9B9C',
+};
 
 const columns = [
   {
@@ -89,7 +118,11 @@ const generateMonths = () => {
 const updatePieChart = (data) => {
   const chartData = data
     .filter((item) => item.total > 0)
-    .map((item) => ({ value: item.total, name: item.category }));
+    .map((item) => ({
+      value: item.total,
+      name: item.category,
+      itemStyle: { color: categoryColors[item.category.split('-')[0].toLowerCase()] },
+    }));
 
   chart.value.setOption({
     tooltip: { trigger: 'item' },
@@ -109,7 +142,7 @@ const updatePieChart = (data) => {
 // 計算每個消費類別的總額
 const calculateCategoryTotals = async () => {
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
-  const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
   const snapshot = await get(groupRef);
 
   if (snapshot.exists()) {
@@ -127,6 +160,7 @@ const calculateCategoryTotals = async () => {
     categoryTotals.value = expenseTypes.value.map((type) => ({
       category: type.label,
       total: totals[type.value].toFixed(2),
+      color: categoryColors[type.label.split('-')[0].toLowerCase()],
     }));
 
     updatePieChart(categoryTotals.value);
@@ -136,6 +170,15 @@ const calculateCategoryTotals = async () => {
   }
 };
 
+watch(
+  () => route.params.groupName, // 監聽路由參數中的 groupName
+  async (newGroupName) => {
+    watchGroupName.value = newGroupName;
+    calculateCategoryTotals();
+  },
+  { immediate: true }, // 當組件初始化時立即執行一次
+);
+
 // 初始化圖表和數據
 onMounted(() => {
   generateMonths();
@@ -144,5 +187,4 @@ onMounted(() => {
   chart.value = echarts.init(chartDom);
   calculateCategoryTotals();
 });
-
 </script>

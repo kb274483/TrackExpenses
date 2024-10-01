@@ -1,7 +1,12 @@
 <template>
   <q-page class="tw-p-4">
-    <div class="tw-font-semibold tw-text-lg tw-text-gray-600">{{groupName}}群組成員</div>
-
+    <div class="tw-relative">
+      <q-icon name="badge"
+        class="tw-font-bold tw-text-gray-600 tw-text-2xl tw-relative -tw-top-1"
+      />
+      <span class="tw-font-bold tw-text-gray-600 tw-text-lg">{{ watchGroupName }}</span>
+      群組成員
+    </div>
     <!-- 顯示群組成員 -->
     <q-list>
       <q-item
@@ -35,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import {
   db, ref as dbRef, get, update,
 } from 'src/boot/firebase';
@@ -46,6 +51,8 @@ import AlertDialog from 'components/AlertDialog.vue';
 // 獲取群組名稱
 const route = useRoute();
 const { groupName } = route.params;
+const watchGroupName = ref(groupName);
+
 const auth = getAuth();
 const user = auth.currentUser;
 
@@ -68,7 +75,7 @@ const showAlert = (message, confirm = false) => {
 
 // 獲取群組成員和判斷是否為創建者
 const fetchGroupMembers = async () => {
-  const groupRef = dbRef(db, `/groups/${groupName}`);
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}`);
   const snapshot = await get(groupRef);
 
   if (snapshot.exists()) {
@@ -108,6 +115,15 @@ const removeMember = async () => {
     memberToDelete.value = null;
   }
 };
+
+watch(
+  () => route.params.groupName, // 監聽路由參數中的 groupName
+  async (newGroupName) => {
+    watchGroupName.value = newGroupName;
+    await fetchGroupMembers();
+  },
+  { immediate: true }, // 當組件初始化時立即執行一次
+);
 
 // 初始化
 onMounted(() => {

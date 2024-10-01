@@ -1,6 +1,12 @@
 <template>
   <q-page class="tw-p-4">
-    <div class="tw-font-semibold tw-text-lg tw-text-gray-600">帳目結算</div>
+    <div class="tw-relative">
+      <q-icon name="badge"
+        class="tw-font-bold tw-text-gray-600 tw-text-2xl tw-relative -tw-top-1"
+      />
+      <span class="tw-font-bold tw-text-gray-600 tw-text-lg">{{ watchGroupName }}</span>
+      帳目結算
+    </div>
     <!-- 月份選擇器 -->
     <div class="tw-mb-4">
       <q-select
@@ -27,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { db, ref as dbRef, get } from 'src/boot/firebase';
 import dayjs from 'dayjs';
@@ -42,6 +48,7 @@ const settlements = ref([]);
 // 群组名稱
 const route = useRoute();
 const { groupName } = route.params;
+const watchGroupName = ref(groupName);
 
 // 生成月份
 const generateMonths = () => {
@@ -59,7 +66,7 @@ const generateMonths = () => {
 // 取得群組成員
 const members = ref([]);
 const fetchMembers = async () => {
-  const groupRef = dbRef(db, `/groups/${groupName}/members`);
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/members`);
   const snapshot = await get(groupRef);
 
   if (snapshot.exists()) {
@@ -115,7 +122,7 @@ const generateSettlementList = (debtMap) => {
 // 計算 消費結果
 const calculateSettlements = async () => {
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
-  const groupRef = dbRef(db, `/groups/${groupName}/expenses/${month}`);
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
   const snapshot = await get(groupRef);
 
   if (snapshot.exists()) {
@@ -150,7 +157,15 @@ const calculateSettlements = async () => {
   }
 };
 
-// watch(selectedMonth, calculateSettlements);
+watch(
+  () => route.params.groupName, // 監聽路由參數中的 groupName
+  async (newGroupName) => {
+    watchGroupName.value = newGroupName;
+    await fetchMembers();
+    calculateSettlements();
+  },
+  { immediate: true }, // 當組件初始化時立即執行一次
+);
 
 // 初始化
 onMounted(async () => {
