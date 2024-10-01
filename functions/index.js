@@ -7,7 +7,7 @@ admin.initializeApp();
 const db = admin.database();
 
 // 每天執行一次的 Scheduled Function
-exports.autoAddFixedExpenses = functions.pubsub.schedule('every day 00:00').onRun(async () => {
+exports.autoAddFixedExpenses = functions.pubsub.schedule('every day 02:30').onRun(async () => {
   const today = dayjs().date(); // 取得今天的日期
   const currentMonth = dayjs().format('YYYY-MM'); // 取得當前月份，格式：2024-09
 
@@ -22,7 +22,7 @@ exports.autoAddFixedExpenses = functions.pubsub.schedule('every day 00:00').onRu
     Object.entries(groups).forEach(async ([groupName, groupData]) => {
       const fixedExpenses = groupData.groupSettings?.fixedExpenses || [];
 
-      // 篩選出今天需要新增的固定支出，增加 radix 參數
+      // 篩選出今天需要新增的固定支出
       const todayExpenses = fixedExpenses.filter(
         (expense) => parseInt(expense.date.value, 10) === today,
       );
