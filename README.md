@@ -1,4 +1,5 @@
 # 這是一個記帳用的App
+[Notion 紀錄](https://delirious-workshop-239.notion.site/PWA-112993c5059a80f79ac1e947b53359eb?pvs=4)
 目前是透過firebase的 Hosting服務做後端部署，
 另外也有使用到Authentication以及Realtime Database
 
