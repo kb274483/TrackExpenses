@@ -7,7 +7,7 @@ admin.initializeApp();
 const db = admin.database();
 
 // 每天執行一次的 Scheduled Function
-exports.autoAddFixedExpenses = functions.pubsub.schedule('every day 02:30').onRun(async () => {
+exports.autoAddFixedExpenses = functions.pubsub.schedule('every day 10:30').timeZone('Asia/Taipei').onRun(async () => {
   const today = dayjs().date(); // 取得今天的日期
   const currentMonth = dayjs().format('YYYY-MM'); // 取得當前月份，格式：2024-09
 
