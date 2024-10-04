@@ -72,9 +72,14 @@
           <q-input
             v-model="expenseData.amount"
             label="Amount"
-            type="number"
+            type="tel"
+            inputmode="numeric"
+            pattern="[0-9]*"
             :error="!expenseData.amount && isSubmitted"
             error-message="Amount is required"
+            @focus="clearZero"
+            @blur="expenseData.amount = expenseData.amount || 0"
+            @update:model-value="removeInvalid"
           />
           <q-select
             v-model="expenseData.payer"
@@ -181,6 +186,17 @@ const expenseTypes = ref([]);
 const records = ref([]);
 const selectedMonth = ref('');
 const months = ref([]);
+
+// 消費金額只能輸入數字，並在focus時刪除0，並在blur時補0
+const clearZero = () => {
+  if (expenseData.value.amount === 0) {
+    expenseData.value.amount = '';
+  }
+};
+// 過濾掉非數字的字符
+const removeInvalid = () => {
+  expenseData.value.amount = expenseData.value.amount.replace(/[^0-9]/g, '');
+};
 
 // 開啟對話框
 const openExpenseDialog = (mode, record = null) => {
