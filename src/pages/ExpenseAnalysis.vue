@@ -122,6 +122,9 @@ const additionalColors = [
 // 合併內建與自定義消費類別
 const mergeExpenseTypes = () => {
   expenseTypes.value = [...defaultExpenseTypes.value, ...customExpenseTypes.value];
+  expenseTypes.value.push({
+    label: 'Fixed Expense-固定支出', value: 'fixed', icon: 'stars', color: '#9D9B9C',
+  });
 };
 
 // 從資料庫取得自定義消費類別
