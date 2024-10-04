@@ -205,7 +205,5 @@ watch(
 // 初始化
 onMounted(async () => {
   generateMonths();
-  await fetchMembers();
-  calculateSettlements();
 });
 </script>
