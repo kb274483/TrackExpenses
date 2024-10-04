@@ -17,7 +17,24 @@
       />
     </div>
 
+    <!-- 成員總花費列表 -->
+    <div class="tw-mb-4">
+      <p class="tw-text-gray-600 tw-font-semibold tw-mb-1">個人消費總額：</p>
+      <q-list bordered class="tw-rounded">
+        <q-item v-for="(total, index) in totalExpenses" :key="index">
+          <q-item-label>
+            <span class="tw-font-semibold tw-mr-2">{{ total.member }}</span>
+            <span class="tw-font-bold tw-text-red-500">$：{{ total.amount }}</span>
+          </q-item-label>
+        </q-item>
+      </q-list>
+      <p class="tw-text-gray-600 tw-text-lg tw-font-semibold tw-mt-1 tw-text-end">
+        {{ totalGroupExpense }}
+      </p>
+    </div>
+
     <!-- 結算列表 -->
+    <p class="tw-text-gray-600 tw-font-semibold tw-mb-1">結算：</p>
     <q-list bordered class="tw-rounded">
       <q-item v-for="(settlement, index) in settlements" :key="index">
         <q-item-label class="tw-flex tw-justify-center tw-items-center tw-gap-1">
@@ -33,7 +50,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import {
+  ref, onMounted, watch, computed,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { db, ref as dbRef, get } from 'src/boot/firebase';
 import dayjs from 'dayjs';
@@ -44,6 +63,7 @@ const months = ref([]);
 
 // 结果
 const settlements = ref([]);
+const totalExpenses = ref([]);
 
 // 群组名稱
 const route = useRoute();
@@ -121,6 +141,7 @@ const generateSettlementList = (debtMap) => {
 
 // 計算 消費結果
 const calculateSettlements = async () => {
+  totalExpenses.value = [];
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
   const snapshot = await get(groupRef);
@@ -128,10 +149,12 @@ const calculateSettlements = async () => {
   if (snapshot.exists()) {
     const expenses = Object.values(snapshot.val());
     const debtMap = {};
+    const memberExpenses = {}; // 紀錄每個成員的花費
 
-    // 初始化每個成員的債務關係
+    // 初始化每個成員的債務關係 debtMap 和花費 memberExpenses
     members.value.forEach((member) => {
       debtMap[member.value] = 0;
+      memberExpenses[member.value] = 0;
     });
 
     // 計算每個成員的應付金額和實際支付金額
@@ -143,6 +166,7 @@ const calculateSettlements = async () => {
 
       // 付款人支付了整個金額，因此他的債務應加上這筆金額
       debtMap[payerId] += totalAmount;
+      memberExpenses[payerId] += totalAmount; // 累加付款人的花費金額
 
       // 每個成員（包含付款人）應分擔的金額
       involvedMembers.forEach((member) => {
@@ -150,12 +174,23 @@ const calculateSettlements = async () => {
       });
     });
 
+    // 設置每個成員的花費總額
+    totalExpenses.value = Object.entries(memberExpenses).map(([memberId, amount]) => ({
+      member: getMemberName(memberId),
+      amount: amount.toFixed(2),
+    }));
+
     // 生成結算列表
     settlements.value = generateSettlementList(debtMap);
   } else {
     settlements.value = [];
   }
 };
+
+const totalGroupExpense = computed(() => {
+  const total = totalExpenses.value.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
+  return `總花費: $${total.toFixed(2)}`;
+});
 
 watch(
   () => route.params.groupName, // 監聽路由參數中的 groupName
