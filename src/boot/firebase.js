@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 // import { getAnalytics } from 'firebase/analytics';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import {
-  getDatabase, ref, set, get, update, onValue, child, remove,
+  getDatabase, ref, set, get, update, onValue, child, remove, push,
 } from 'firebase/database';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -33,5 +33,7 @@ const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
 export {
-  auth, db, provider, signInWithPopup, ref, set, get, update, onValue, child, remove,
+  auth, db, provider, signInWithPopup, ref,
+  set, get, update, onValue, child, remove,
+  push,
 };

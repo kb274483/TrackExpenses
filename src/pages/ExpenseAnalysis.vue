@@ -74,28 +74,31 @@ const pagination = ref({
 
 // 消費類別和圖表
 const chart = ref(null);
-const expenseTypes = ref([
-  { label: 'Transportation-交通', value: 'transportation' },
-  { label: 'Food-飲食', value: 'food' },
-  { label: 'Entertainment-娛樂', value: 'entertainment' },
-  { label: 'Pets-寵物', value: 'pets' },
-  { label: 'Housing-住家', value: 'housing' },
-  { label: 'Daily Supplies-日常用品', value: 'supplies' },
-  { label: 'Other-其他', value: 'other' },
-  { label: 'Fixed Expense-固定支出', value: 'fixed' },
+const customExpenseTypes = ref([]);
+const defaultExpenseTypes = ref([
+  {
+    label: 'Transportation-交通', value: 'transportation', icon: 'directions_bus', color: '#879AD7',
+  },
+  {
+    label: 'Food-飲食', value: 'food', icon: 'restaurant', color: '#B2DB9E',
+  },
+  {
+    label: 'Entertainment-娛樂', value: 'entertainment', icon: 'theaters', color: '#FBD88A',
+  },
+  {
+    label: 'Pets-寵物', value: 'pets', icon: 'pets', color: '#F39393',
+  },
+  {
+    label: 'Housing-住家', value: 'housing', icon: 'home', color: '#9DD2E7',
+  },
+  {
+    label: 'Daily Supplies-日常用品', value: 'supplies', icon: 'shopping_cart', color: '#75BD9C',
+  },
+  {
+    label: 'Other-其他', value: 'other', icon: 'more_horiz', color: '#FCA885',
+  },
 ]);
-
-// 每個消費類別對應的顏色
-const categoryColors = {
-  transportation: '#879AD7',
-  food: '#B2DB9E',
-  entertainment: '#FBD88A',
-  pets: '#F39393',
-  housing: '#9DD2E7',
-  'daily supplies': '#75BD9C',
-  other: '#FCA885',
-  'fixed expense': '#9D9B9C',
-};
+const expenseTypes = ref([]);
 
 const columns = [
   {
@@ -105,6 +108,35 @@ const columns = [
     name: 'total', label: '總額', align: 'right', field: 'total',
   },
 ];
+
+// 自定類別色彩
+const additionalColors = [
+  '#FFCCBC',
+  '#CE93D8',
+  '#81D4FA',
+  '#FFCDD2',
+  '#B39DDB',
+  '#FFD54F',
+];
+
+// 合併內建與自定義消費類別
+const mergeExpenseTypes = () => {
+  expenseTypes.value = [...defaultExpenseTypes.value, ...customExpenseTypes.value];
+};
+
+// 從資料庫取得自定義消費類別
+const fetchCustomExpenseTypes = async () => {
+  const customTypesRef = dbRef(db, `/groups/${watchGroupName.value}/expenseTypes/custom`);
+  const snapshot = await get(customTypesRef);
+  if (snapshot.exists()) {
+    customExpenseTypes.value = Object.values(snapshot.val()).map((type, index) => ({
+      ...type,
+      value: type.value,
+      color: additionalColors[index],
+    }));
+  }
+  mergeExpenseTypes();
+};
 
 // 生成月份選項
 const generateMonths = () => {
@@ -126,7 +158,7 @@ const updatePieChart = (data) => {
     .map((item) => ({
       value: item.total,
       name: item.category,
-      itemStyle: { color: categoryColors[item.category.split('-')[0].toLowerCase()] },
+      itemStyle: { color: item.color },
     }));
 
   chart.value.setOption({
@@ -165,7 +197,7 @@ const calculateCategoryTotals = async () => {
     categoryTotals.value = expenseTypes.value.map((type) => ({
       category: type.label,
       total: totals[type.value].toFixed(2),
-      color: categoryColors[type.label.split('-')[0].toLowerCase()],
+      color: type.color,
     }));
 
     updatePieChart(categoryTotals.value);
@@ -179,6 +211,7 @@ watch(
   () => route.params.groupName, // 監聽路由參數中的 groupName
   async (newGroupName) => {
     watchGroupName.value = newGroupName;
+    await fetchCustomExpenseTypes();
     calculateCategoryTotals();
   },
   { immediate: true }, // 當組件初始化時立即執行一次

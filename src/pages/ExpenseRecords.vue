@@ -166,7 +166,8 @@ const expenseData = ref({
 
 const recordToDelete = ref(null);
 const members = ref([]);
-const expenseTypes = ref([
+const customExpenseTypes = ref([]);
+const defaultExpenseTypes = ref([
   { label: 'Transportation-交通', value: 'transportation', icon: 'directions_bus' },
   { label: 'Food-飲食', value: 'food', icon: 'restaurant' },
   { label: 'Entertainment-娛樂', value: 'entertainment', icon: 'theaters' },
@@ -174,11 +175,8 @@ const expenseTypes = ref([
   { label: 'Housing-住家', value: 'housing', icon: 'home' },
   { label: 'Daily Supplies-日常用品', value: 'supplies', icon: 'shopping_cart' },
   { label: 'Other-其他', value: 'other', icon: 'more_horiz' },
-  // 固定支出
-  {
-    label: 'Fixed Expense-固定支出', value: 'fixed', icon: 'stars', disable: true,
-  },
 ]);
+const expenseTypes = ref([]);
 
 const records = ref([]);
 const selectedMonth = ref('');
@@ -213,6 +211,25 @@ const fetchMembers = async () => {
       value: member.id,
     }));
   }
+};
+
+// 合併自定義與內建類型
+const mergeExpenseTypes = () => {
+  expenseTypes.value = [...defaultExpenseTypes.value, ...customExpenseTypes.value];
+  expenseTypes.value.push({
+    label: 'Fixed Expense-固定支出', value: 'fixed', icon: 'stars', disable: true,
+  });
+};
+
+// 獲取自定義消費類型
+const fetchCustomExpenseTypes = async () => {
+  customExpenseTypes.value = [];
+  const expenseTypesRef = dbRef(db, `/groups/${watchGroupName.value}/expenseTypes/custom`);
+  const snapshot = await get(expenseTypesRef);
+  if (snapshot.exists()) {
+    customExpenseTypes.value = Object.values(snapshot.val());
+  }
+  mergeExpenseTypes();
 };
 
 // 加載消費記錄和群組成員
@@ -312,6 +329,7 @@ watch(
     watchGroupName.value = newGroupName;
     await fetchMembers();
     await fetchRecords();
+    await fetchCustomExpenseTypes();
   },
   { immediate: true }, // 當組件初始化時立即執行一次
 );
