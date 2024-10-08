@@ -21,8 +21,10 @@
     <div class="tw-mb-4">
       <p class="tw-text-gray-600 tw-font-semibold tw-mb-1">個人消費總額：</p>
       <q-list bordered class="tw-rounded">
-        <q-item v-for="(total, index) in totalExpenses" :key="index">
-          <q-item-label>
+        <q-item class="tw-p-2"
+          v-for="(total, index) in totalExpenses" :key="index"
+        >
+          <q-item-label class="tw-flex tw-items-center">
             <span class="tw-font-semibold tw-mr-2">{{ total.member }}</span>
             <span class="tw-font-bold tw-text-red-500">$：{{ total.amount }}</span>
           </q-item-label>
@@ -36,7 +38,9 @@
     <!-- 結算列表 -->
     <p class="tw-text-gray-600 tw-font-semibold tw-mb-1">結算：</p>
     <q-list bordered class="tw-rounded">
-      <q-item v-for="(settlement, index) in settlements" :key="index">
+      <q-item class="tw-p-2"
+        v-for="(settlement, index) in settlements" :key="index"
+      >
         <q-item-label class="tw-flex tw-justify-center tw-items-center tw-gap-1">
           <span class="tw-font-semibold">{{ settlement.payer }}</span>
           <q-icon name="money" class="tw-text-gray-600 tw-text-3xl" />
@@ -45,7 +49,6 @@
           <span class="tw-font-bold tw-text-red-500"> ${{ settlement.amount }}</span>
         </q-item-label>
         <q-checkbox
-          class="tw-ml-4"
           keep-color size="lg"
           v-model="settlement.paid"
           :disable="!isReceiver(settlement)"
