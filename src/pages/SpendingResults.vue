@@ -44,6 +44,14 @@
           <span class="tw-font-semibold tw-text-primary">{{ settlement.receiver }}</span>
           <span class="tw-font-bold tw-text-red-500"> ${{ settlement.amount }}</span>
         </q-item-label>
+        <q-checkbox
+          class="tw-ml-4"
+          keep-color size="lg"
+          v-model="settlement.paid"
+          :disable="!isReceiver(settlement)"
+          :color="isReceiver(settlement) ? 'teal' : 'grey'"
+          @update:model-value="updateSettlementStatus(index, settlement.paid)"
+        />
       </q-item>
     </q-list>
   </q-page>
@@ -54,8 +62,15 @@ import {
   ref, onMounted, watch, computed,
 } from 'vue';
 import { useRoute } from 'vue-router';
-import { db, ref as dbRef, get } from 'src/boot/firebase';
+import {
+  db, ref as dbRef, get, set,
+} from 'src/boot/firebase';
 import dayjs from 'dayjs';
+import { getAuth } from 'firebase/auth';
+
+// 獲取當前用戶
+const auth = getAuth();
+const user = auth.currentUser;
 
 // 月份選擇器
 const selectedMonth = ref('');
@@ -128,6 +143,7 @@ const generateSettlementList = (debtMap) => {
       settlementList.push({
         payer: getMemberName(payer.memberId),
         receiver: getMemberName(receiver.memberId),
+        receiverId: receiver.memberId,
         amount: paymentAmount.toFixed(2),
       });
 
@@ -164,8 +180,7 @@ const calculateSettlements = async () => {
       const involvedMembers = expense.members; // 涉及的成員
       const perPersonAmount = totalAmount / involvedMembers.length; // 每個成員應付的金額
 
-      // 付款人支付了整個金額，因此他的債務應加上這筆金額
-      debtMap[payerId] += totalAmount;
+      debtMap[payerId] += totalAmount; // 累加付款人的應付金額
       memberExpenses[payerId] += totalAmount; // 累加付款人的花費金額
 
       // 每個成員（包含付款人）應分擔的金額
@@ -181,7 +196,10 @@ const calculateSettlements = async () => {
     }));
 
     // 生成結算列表
-    settlements.value = generateSettlementList(debtMap);
+    settlements.value = generateSettlementList(debtMap).map((settlement) => ({
+      ...settlement,
+      paid: false, // 初始未付款
+    }));
   } else {
     settlements.value = [];
   }
@@ -191,6 +209,18 @@ const totalGroupExpense = computed(() => {
   const total = totalExpenses.value.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
   return `總花費: $${total.toFixed(2)}`;
 });
+
+// 判斷是否為應收款人
+const isReceiver = computed(() => (settlement) => settlement.receiverId === user.uid);
+
+// 更新結算狀態
+const updateSettlementStatus = async () => {
+  const month = selectedMonth.value;
+  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/settlements/${month}`);
+
+  // 更新資料庫狀態
+  await set(groupRef, settlements.value);
+};
 
 watch(
   () => route.params.groupName, // 監聽路由參數中的 groupName

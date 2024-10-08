@@ -187,6 +187,11 @@ const iconOptions = ref([
   { label: 'book', value: 'menu_book' },
   { label: 'airplane', value: 'airplanemode_active' },
   { label: 'clothing', value: 'checkroom' },
+  { label: 'savings', value: 'savings' },
+  { label: 'currency', value: 'monetization_on' },
+  { label: 'gym', value: 'fitness_center' },
+  { label: 'savings', value: 'savings' },
+  { label: 'currency', value: 'monetization_on' },
 ]);
 
 // 取得群組名稱
