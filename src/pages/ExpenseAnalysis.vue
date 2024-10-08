@@ -111,12 +111,16 @@ const columns = [
 
 // 自定類別色彩
 const additionalColors = [
+  '#8591B6',
   '#FFCCBC',
   '#CE93D8',
   '#81D4FA',
-  '#FFCDD2',
+  '#15E4C6',
   '#B39DDB',
   '#FFD54F',
+  '#797289',
+  '#8591B6',
+  '#238BD3',
 ];
 
 // 合併內建與自定義消費類別
