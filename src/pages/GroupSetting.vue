@@ -322,11 +322,12 @@ const saveFixedExpense = async () => {
   }
   const fixedExpensesID = Date.now().toString();
   expenseData.value.id = fixedExpensesID;
-  const updatedExpenses = [...fixedExpenses.value, { ...expenseData.value }];
+  const updatedExpenses = expenseData.value;
   const groupSettingsRef = dbRef(db, `/groups/${watchGroupName.value}/groupSettings/fixedExpenses/${fixedExpensesID}`);
-  await set(groupSettingsRef, ...updatedExpenses);
-  fixedExpenses.value = updatedExpenses;
+  await set(groupSettingsRef, updatedExpenses);
+  fixedExpenses.value = [...fixedExpenses.value, updatedExpenses];
   showFixedExpenseDialog.value = false;
+  isSubmitted.value = false;
 };
 
 // 取得現有固定支出設定
@@ -336,7 +337,7 @@ const fetchFixedExpenses = async () => {
   const snapshot = await get(groupSettingsRef);
 
   if (snapshot.exists()) {
-    fixedExpenses.value = snapshot.val() || [];
+    fixedExpenses.value = Object.values(snapshot.val()).map((expense) => expense);
   }
 };
 
