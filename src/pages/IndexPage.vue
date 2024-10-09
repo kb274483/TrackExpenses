@@ -2,22 +2,32 @@
   <q-page class="tw-flex tw-justify-center tw-items-center">
     <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2 tw-mx-4 bg-secondary tw-text-white">
       <q-card-section>
-        <div class="text-h6 tw-text-center">
+        <div class="tw-text-2xl tw-text-center">
           Choose to join or create.
+        </div>
+        <div class="tw-text-sm tw-text-center">
+          a group to start managing expenses.
         </div>
       </q-card-section>
 
       <q-separator color='white' inset />
 
-      <q-card-actions vertical>
-        <q-btn flat align="start" @click="showCreateGroup = true">
+      <q-card-actions vertical class="tw-mx-2">
+        <q-btn flat align="start"
+          class="tw-mb-1"
+          style="background-color: white; color: #555555;"
+          @click="showCreateGroup = true"
+        >
           <q-icon name="group_add" class="tw-mr-4" />
           <span>Create group</span>
         </q-btn>
 
-        <q-separator inset />
+        <!-- <q-separator inset /> -->
 
-        <q-btn flat align="start" @click="showJoinGroup = true">
+        <q-btn flat align="start"
+          style="background-color: white; color: #555555;"
+          @click="showJoinGroup = true"
+        >
           <q-icon name="person_add" class="tw-mr-4" />
           <span>Join group</span>
         </q-btn>

@@ -210,10 +210,10 @@ const iconOptions = ref([
   { label: 'airplane', value: 'airplanemode_active' },
   { label: 'clothing', value: 'checkroom' },
   { label: 'savings', value: 'savings' },
-  { label: 'currency', value: 'monetization_on' },
   { label: 'gym', value: 'fitness_center' },
-  { label: 'savings', value: 'savings' },
-  { label: 'currency', value: 'monetization_on' },
+  { label: 'yen', value: 'currency_yen' },
+  { label: 'pound', value: 'currency_pound' },
+  { label: 'euro', value: 'euro' },
 ]);
 
 // 取得群組名稱

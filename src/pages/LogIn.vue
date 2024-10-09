@@ -2,9 +2,15 @@
   <div class="flex flex-center containerHeight">
     <q-card class="tw-w-2/3 lg:tw-w-1/4 bg-secondary text-white">
       <q-card-section class="tw-h-full tw-items-center">
-        <p class="tw-text-center tw-text-2xl">Hello!</p>
+        <p class="tw-text-start tw-text-2xl">
+          Welcome to
+          <span
+            style="color: #FFD700;"
+            class="tw-block"
+          >Expense Tracker</span>
+        </p>
         <div class="tw-flex tw-justify-end tw-border-t-2 tw-border-white tw-pt-4">
-          <q-btn color="white" text-color="black" label="LogIn" @click="login()" />
+          <q-btn color="white" text-color="black" label="Google LogIn" @click="login()" />
         </div>
       </q-card-section>
     </q-card>
