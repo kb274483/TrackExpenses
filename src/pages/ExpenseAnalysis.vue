@@ -77,35 +77,62 @@ const chart = ref(null);
 const customExpenseTypes = ref([]);
 const defaultExpenseTypes = ref([
   {
-    label: 'Transportation-交通', value: 'transportation', icon: 'directions_bus', color: '#879AD7',
+    label: 'Transportation-交通',
+    value: 'transportation',
+    icon: 'directions_bus',
+    color: '#879AD7',
   },
   {
-    label: 'Food-飲食', value: 'food', icon: 'restaurant', color: '#B2DB9E',
+    label: 'Food-飲食',
+    value: 'food',
+    icon: 'restaurant',
+    color: '#B2DB9E',
   },
   {
-    label: 'Entertainment-娛樂', value: 'entertainment', icon: 'theaters', color: '#FBD88A',
+    label: 'Entertainment-娛樂',
+    value: 'entertainment',
+    icon: 'theaters',
+    color: '#FBD88A',
   },
   {
-    label: 'Pets-寵物', value: 'pets', icon: 'pets', color: '#F39393',
+    label: 'Pets-寵物',
+    value: 'pets',
+    icon: 'pets',
+    color: '#F39393',
   },
   {
-    label: 'Housing-住家', value: 'housing', icon: 'home', color: '#9DD2E7',
+    label: 'Housing-住家',
+    value: 'housing',
+    icon: 'home',
+    color: '#9DD2E7',
   },
   {
-    label: 'Daily Supplies-日常用品', value: 'supplies', icon: 'shopping_cart', color: '#75BD9C',
+    label: 'Daily Supplies-日常用品',
+    value: 'supplies',
+    icon: 'shopping_cart',
+    color: '#75BD9C',
   },
   {
-    label: 'Other-其他', value: 'other', icon: 'more_horiz', color: '#FCA885',
+    label: 'Other-其他',
+    value: 'other',
+    icon: 'more_horiz',
+    color: '#FCA885',
   },
 ]);
 const expenseTypes = ref([]);
 
 const columns = [
   {
-    name: 'category', label: '消費類別', align: 'left', field: 'category',
+    name: 'category',
+    label: '消費類別',
+    align: 'left',
+    field: 'category',
   },
   {
-    name: 'total', label: '總額', align: 'right', field: 'total',
+    name: 'total',
+    label: '總額',
+    align: 'right',
+    field: 'total',
   },
 ];
 

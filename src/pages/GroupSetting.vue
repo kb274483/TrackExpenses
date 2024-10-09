@@ -35,7 +35,7 @@
 
     <!-- 固定支出列表 -->
     <q-list v-if="tab === 'fixedExpense'">
-      <q-item v-for="(expense, index) in fixedExpenses" :key="index"
+      <q-item v-for="(expense) in fixedExpenses" :key="expense.id"
         class="tw-border tw-border-gray-300 tw-rounded tw-my-2"
       >
         <div class="tw-grid tw-grid-cols-6 tw-gap-2">
@@ -47,7 +47,7 @@
             <span class="block">{{ expense.date.label }}</span>
             <span class="tw-font-bold">{{ getMemberName(expense.payerId.value) }}</span> 付款
           </div>
-          <q-btn icon="delete" color="negative" flat @click="deleteFixedExpense(index)" />
+          <q-btn icon="delete" color="negative" flat @click="deleteFixedExpense(expense.id)" />
         </div>
       </q-item>
     </q-list>
@@ -92,6 +92,23 @@
             option-value="value" option-label="label"
             :error="!expenseData.payerId && isSubmitted"
             error-message="必須選擇付款人"
+          />
+          <q-toggle
+            v-model="expenseData.installments"
+            :label="expenseData.installments ? '設定期數' : '不設定期數'"
+            color="primary"
+            keep-color
+          />
+          <q-input v-if="expenseData.installments"
+            type="tel"
+            label="固定開支期數"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            v-model="expenseData.paymentTerms"
+            error-message="必須填寫分期期數"
+            :error="expenseData.installments && !expenseData.paymentTerms && isSubmitted"
+            @blur="expenseData.paymentTerms = expenseData.paymentTerms || 0"
+            @update:model-value="removeInvalid"
           />
         </q-card-section>
         <q-card-actions align="right">
@@ -159,7 +176,12 @@ const tab = ref('fixedExpense');
 const showFixedExpenseDialog = ref(false);
 const showExpenseTypeDialog = ref(false);
 const expenseData = ref({
-  name: '', amount: 0, date: '', payerId: '',
+  name: '',
+  amount: 0,
+  date: '',
+  payerId: '',
+  installments: false,
+  paymentTerms: 1,
 });
 const newExpenseType = ref({ label: '', value: '', icon: '' });
 const fixedExpenses = ref([]);
@@ -208,7 +230,12 @@ for (let i = 1; i <= 31; i++) {
 const openFixedExpenseDialog = () => {
   showFixedExpenseDialog.value = true;
   expenseData.value = {
-    name: '', amount: 0, date: '', payerId: '',
+    name: '',
+    amount: 0,
+    date: '',
+    payerId: '',
+    installments: false,
+    paymentTerms: 1,
   };
 };
 
@@ -272,6 +299,13 @@ const deleteExpenseType = async (index) => {
   customExpenseTypes.value = updatedTypes;
 };
 
+// 刪除固定支出
+const deleteFixedExpense = async (id) => {
+  const groupSettingsRef = dbRef(db, `/groups/${watchGroupName.value}/groupSettings/fixedExpenses/${id}`);
+  await set(groupSettingsRef, null);
+  fixedExpenses.value = fixedExpenses.value.filter((expense) => expense.id !== id);
+};
+
 // 儲存固定支出設定
 const saveFixedExpense = async () => {
   isSubmitted.value = true;
@@ -283,9 +317,14 @@ const saveFixedExpense = async () => {
   ) {
     return;
   }
-  const groupSettingsRef = dbRef(db, `/groups/${watchGroupName.value}/groupSettings/fixedExpenses`);
+  if (expenseData.value.installments && expenseData.value.paymentTerms < 1) {
+    return;
+  }
+  const fixedExpensesID = Date.now().toString();
+  expenseData.value.id = fixedExpensesID;
   const updatedExpenses = [...fixedExpenses.value, { ...expenseData.value }];
-  await set(groupSettingsRef, updatedExpenses);
+  const groupSettingsRef = dbRef(db, `/groups/${watchGroupName.value}/groupSettings/fixedExpenses/${fixedExpensesID}`);
+  await set(groupSettingsRef, ...updatedExpenses);
   fixedExpenses.value = updatedExpenses;
   showFixedExpenseDialog.value = false;
 };
@@ -301,6 +340,11 @@ const fetchFixedExpenses = async () => {
   }
 };
 
+// 過濾掉非數字的字符
+const removeInvalid = () => {
+  expenseData.value.paymentTerms = expenseData.value.paymentTerms.replace(/[^0-9]/g, '');
+};
+
 watch(
   () => route.params.groupName, // 監聽路由參數中的 groupName
   async (newGroupName) => {
@@ -312,11 +356,6 @@ watch(
   { immediate: true }, // 當組件初始化時立即執行一次
 );
 
-// 初始化
-// onMounted(() => {
-//   fetchMembers();
-//   fetchCustomExpenseTypes();
-// });
 </script>
 
 <style scoped>
