@@ -35,3 +35,4 @@ yarn-error.log*
 .env.local*
 
 firebase-debug.log
+hosting.ZGlzdC9wd2E.cache
