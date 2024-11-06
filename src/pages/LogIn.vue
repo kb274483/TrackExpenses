@@ -14,14 +14,14 @@
         </div>
       </q-card-section>
     </q-card>
+    <AlertDialog
+      v-if="alertVisible"
+      :message="alertMessage"
+      :isConfirm="isConfirm"
+      @ok="onOk"
+      @cancel="onCancel"
+    />
   </div>
-  <AlertDialog
-    v-if="alertVisible"
-    :message="alertMessage"
-    :isConfirm="isConfirm"
-    @ok="onOk"
-    @cancel="onCancel"
-  />
 </template>
 
 <script setup>
@@ -29,16 +29,15 @@ import { useRouter } from 'vue-router';
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged,
 } from 'firebase/auth';
-import { onMounted } from 'vue';
-import {
-  db, ref, get, set,
-} from 'src/boot/firebase';
+import { ref, get, set } from 'firebase/database';
+import { onMounted, ref as vueRef } from 'vue';
+import { db } from 'src/boot/firebase';
 import AlertDialog from 'src/components/AlertDialog.vue';
 
 // alert 狀態變數
-const alertVisible = ref(false);
-const alertMessage = ref('');
-const isConfirm = ref(false);
+const alertVisible = vueRef(false);
+const alertMessage = vueRef('');
+const isConfirm = vueRef(false);
 
 // 顯示 AlertDialog
 const showAlert = (message) => {
@@ -55,7 +54,7 @@ const login = async () => {
     const res = await signInWithPopup(auth, provider);
     if (res) {
       const { user } = res;
-      const userRef = ref(db, `/users/${user.uid}`); // user.uid be node key
+      const userRef = ref(db, `/users/${user.uid}`);
 
       // 檢查使用者是否已經註冊過
       const snapshot = await get(userRef);
@@ -76,12 +75,12 @@ const login = async () => {
     showAlert('Login error');
   }
 };
+
 onMounted(() => {
   onAuthStateChanged(auth, (user) => {
     if (user) $router.push('/');
   });
 });
-
 </script>
 
 <style scoped>
