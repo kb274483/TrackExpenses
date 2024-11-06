@@ -162,7 +162,6 @@ const createGroup = async () => {
     groupPassword.value = '';
   } catch (error) {
     showAlert('Error creating group. Please try again.');
-    console.error('Error creating group:', error);
   }
 };
 
@@ -216,7 +215,6 @@ const joinGroup = async () => {
     joinGroupPassword.value = '';
   } catch (error) {
     showAlert('Error joining group. Please try again.');
-    console.error('Error joining group:', error);
   }
 };
 </script>

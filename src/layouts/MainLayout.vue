@@ -112,6 +112,14 @@
       <router-view @groupUpdated="loadUserGroups" />
     </q-page-container>
 
+    <AlertDialog
+      v-if="alertVisible"
+      :message="alertMessage"
+      :isConfirm="isConfirm"
+      @ok="onOk"
+      @cancel="onCancel"
+    />
+
   </q-layout>
 </template>
 
@@ -122,12 +130,25 @@ import { useRouter } from 'vue-router';
 import {
   db, ref as dbRef, get,
 } from 'src/boot/firebase';
+import AlertDialog from 'src/components/AlertDialog.vue';
 
 const $router = useRouter();
 
 const leftDrawerOpen = ref(false);
 const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value;
+};
+
+// alert 狀態變數
+const alertVisible = ref(false);
+const alertMessage = ref('');
+const isConfirm = ref(false);
+
+// 顯示 AlertDialog
+const showAlert = (message) => {
+  alertMessage.value = message;
+  isConfirm.value = false;
+  alertVisible.value = true;
 };
 
 // firebase auth
@@ -144,7 +165,7 @@ const logout = async () => {
     await auth.signOut();
     $router.push('/login');
   } catch (error) {
-    console.error('Error signing out:', error);
+    showAlert('Error signing out');
   }
 };
 
@@ -164,7 +185,7 @@ const loadUserGroups = async () => {
       }
     }
   } catch (error) {
-    console.error('Error loading user groups:', error);
+    showAlert('Error loading');
   }
 };
 // 監聽創建或加入群組的事件

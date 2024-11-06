@@ -15,6 +15,13 @@
       </q-card-section>
     </q-card>
   </div>
+  <AlertDialog
+    v-if="alertVisible"
+    :message="alertMessage"
+    :isConfirm="isConfirm"
+    @ok="onOk"
+    @cancel="onCancel"
+  />
 </template>
 
 <script setup>
@@ -26,6 +33,19 @@ import { onMounted } from 'vue';
 import {
   db, ref, get, set,
 } from 'src/boot/firebase';
+import AlertDialog from 'src/components/AlertDialog.vue';
+
+// alert 狀態變數
+const alertVisible = ref(false);
+const alertMessage = ref('');
+const isConfirm = ref(false);
+
+// 顯示 AlertDialog
+const showAlert = (message) => {
+  alertMessage.value = message;
+  isConfirm.value = false;
+  alertVisible.value = true;
+};
 
 const $router = useRouter();
 const auth = getAuth();
@@ -47,15 +67,13 @@ const login = async () => {
           email: user.email,
           photoURL: user.photoURL,
         });
-      } else {
-        console.log('User already registered:', user.displayName);
       }
 
       // 登入後跳轉首頁
       $router.push('/');
     }
   } catch (error) {
-    console.error('Login error:', error);
+    showAlert('Login error');
   }
 };
 onMounted(() => {
