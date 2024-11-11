@@ -163,7 +163,9 @@ const calculateSettlements = async () => {
   totalExpenses.value = [];
   const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
+  const debtRef = dbRef(db, `/groups/${watchGroupName.value}/settlements/${month}`);
   const snapshot = await get(groupRef);
+  const debtStatus = await get(debtRef);
 
   if (snapshot.exists()) {
     const expenses = Object.values(snapshot.val());
@@ -198,10 +200,14 @@ const calculateSettlements = async () => {
       amount: amount.toFixed(2),
     }));
 
+    let paidStatus = false;// 初始未付款
+    if (debtStatus.exists()) {
+      paidStatus = debtStatus.val()[0].paid;
+    }
     // 生成結算列表
     settlements.value = generateSettlementList(debtMap).map((settlement) => ({
       ...settlement,
-      paid: false, // 初始未付款
+      paid: paidStatus,
     }));
   } else {
     settlements.value = [];
