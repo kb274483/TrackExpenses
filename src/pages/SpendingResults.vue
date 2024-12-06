@@ -51,8 +51,8 @@
         <q-checkbox
           keep-color size="lg"
           v-model="settlement.paid"
-          :disable="!isReceiver(settlement)"
           :color="isReceiver(settlement) ? 'teal' : 'grey'"
+          :disable="!isReceiver(settlement)"
           @update:model-value="updateSettlementStatus(index, settlement.paid)"
         />
       </q-item>
@@ -224,7 +224,7 @@ const isReceiver = computed(() => (settlement) => settlement.receiverId === user
 
 // 更新結算狀態
 const updateSettlementStatus = async () => {
-  const month = selectedMonth.value;
+  const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}/settlements/${month}`);
 
   // 更新資料庫狀態
