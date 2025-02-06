@@ -173,12 +173,14 @@ const recordToDelete = ref(null);
 const members = ref([]);
 const customExpenseTypes = ref([]);
 const defaultExpenseTypes = ref([
-  { label: 'Transportation-交通', value: 'transportation', icon: 'directions_bus' },
+  { label: 'Transportation-交通', value: 'transportation', icon: 'commute' },
   { label: 'Food-飲食', value: 'food', icon: 'restaurant' },
   { label: 'Entertainment-娛樂', value: 'entertainment', icon: 'theaters' },
   { label: 'Pets-寵物', value: 'pets', icon: 'pets' },
   { label: 'Housing-住家', value: 'housing', icon: 'home' },
   { label: 'Daily Supplies-日常用品', value: 'supplies', icon: 'shopping_cart' },
+  { label: 'Investment-投資', value: 'investment', icon: 'savings' },
+  { label: 'Shopping-購物', value: 'shopping', icon: 'shopping_cart' },
   { label: 'Other-其他', value: 'other', icon: 'more_horiz' },
 ]);
 const expenseTypes = ref([]);

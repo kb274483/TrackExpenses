@@ -79,7 +79,7 @@ const defaultExpenseTypes = ref([
   {
     label: 'Transportation-交通',
     value: 'transportation',
-    icon: 'directions_bus',
+    icon: 'commute',
     color: '#879AD7',
   },
   {
@@ -111,6 +111,18 @@ const defaultExpenseTypes = ref([
     value: 'supplies',
     icon: 'shopping_cart',
     color: '#75BD9C',
+  },
+  {
+    label: 'Investment-投資',
+    value: 'investment',
+    icon: 'savings',
+    color: '#238BD3',
+  },
+  {
+    label: 'Shopping-購物',
+    value: 'shopping',
+    icon: 'shopping_cart',
+    color: '#8591B6',
   },
   {
     label: 'Other-其他',
@@ -146,8 +158,6 @@ const additionalColors = [
   '#B39DDB',
   '#FFD54F',
   '#797289',
-  '#8591B6',
-  '#238BD3',
 ];
 
 // 合併內建與自定義消費類別
