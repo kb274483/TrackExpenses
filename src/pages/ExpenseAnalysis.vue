@@ -158,6 +158,9 @@ const additionalColors = [
   '#B39DDB',
   '#FFD54F',
   '#797289',
+  '#9BA4B5',
+  '#E6A7C8',
+  '#92BE8D',
 ];
 
 // 合併內建與自定義消費類別
@@ -206,7 +209,10 @@ const updatePieChart = (data) => {
     }));
 
   chart.value.setOption({
-    tooltip: { trigger: 'item' },
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: $ {c} ({d}%)',
+    },
     series: [
       {
         type: 'pie',
