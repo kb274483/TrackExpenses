@@ -104,6 +104,44 @@
             :error="!expenseData.date && isSubmitted"
             error-message="Date is required"
           />
+          <!-- 消費參與者選擇器 -->
+          <q-select
+            v-model="expenseData.involvedMembers"
+            :options="members"
+            label="Participants"
+            multiple
+            option-value="value"
+            option-label="label"
+            emit-value
+            map-options
+            :error="!expenseData.involvedMembers ||
+                   expenseData.involvedMembers.length === 0 && isSubmitted"
+            error-message="至少需要一名參與者"
+          >
+            <template v-slot:selected>
+              <q-chip
+                v-for="member in getSelectedMembers(expenseData.involvedMembers)"
+                :key="member.value"
+                removable
+                dense
+                @remove="removeParticipant(member.value)"
+                class="q-mr-xs"
+              >
+                {{ member.label }}
+              </q-chip>
+              <q-btn
+                v-if="!allParticipantsSelected"
+                flat
+                dense
+                size="sm"
+                icon="add"
+                @click="selectAllParticipants"
+                class="q-ml-xs"
+              >
+                <q-tooltip>Select All</q-tooltip>
+              </q-btn>
+            </template>
+          </q-select>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -134,7 +172,7 @@
 
 <script setup>
 import {
-  ref, onMounted, onUnmounted, watch,
+  ref, onMounted, onUnmounted, watch, computed,
 } from 'vue';
 import {
   db, ref as dbRef, get, set, remove, onValue,
@@ -167,6 +205,7 @@ const expenseData = ref({
   date: new Date().toISOString().slice(0, 10),
   payer: '',
   type: '',
+  involvedMembers: [], // 參與成員數組
 });
 
 const recordToDelete = ref(null);
@@ -211,13 +250,48 @@ const openExpenseDialog = (mode, record = null) => {
       date: new Date().toISOString().slice(0, 10),
       payer: user ? { label: user.displayName, value: user.uid } : '',
       type: '',
+      involvedMembers: members.value.map((member) => member.value), // 默認選擇所有成員
     };
   } else if (mode === 'edit' && record) {
     isEditMode.value = true;
     expenseData.value = { ...record };
+    // 如果編輯的記錄中沒有 involvedMembers 欄位，則創建一個（兼容舊數據）
+    if (!expenseData.value.involvedMembers || !Array.isArray(expenseData.value.involvedMembers)) {
+      // 從members數組獲取ID，確保處理可能的undefined情況
+      const memberIds = record.members && Array.isArray(record.members)
+        ? record.members.map((member) => member.value).filter(Boolean)
+        : members.value.map((member) => member.value);
+
+      expenseData.value.involvedMembers = memberIds;
+    }
   }
   showExpenseDialog.value = true;
 };
+
+// 獲取選定的成員對象
+const getSelectedMembers = (selectedIds) => {
+  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0) return [];
+  // 確保members.value存在且是 Array
+  if (!members.value || !Array.isArray(members.value)) return [];
+
+  return members.value.filter((member) => member && member.value
+    && selectedIds.includes(member.value));
+};
+
+// 從參與者中移除成員
+const removeParticipant = (memberId) => {
+  expenseData.value.involvedMembers = expenseData.value.involvedMembers
+    .filter((id) => id !== memberId);
+};
+
+// 選擇所有參與者
+const selectAllParticipants = () => {
+  expenseData.value.involvedMembers = members.value.map((member) => member.value);
+};
+
+// 計算是否所有成員都已選中
+const allParticipantsSelected = computed(() => expenseData.value.involvedMembers
+    && members.value.length === expenseData.value.involvedMembers.length);
 
 const fetchMembers = async () => {
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}/members`);
@@ -285,17 +359,24 @@ const deleteExpenseConfirmed = async () => {
 const saveExpense = async () => {
   isSubmitted.value = true;
 
-  if (!expenseData.value.description || !expenseData.value.amount || !expenseData.value.payer
-    || !expenseData.value.type || !expenseData.value.date) {
+  if (!expenseData.value.description || !expenseData.value.amount
+    || !expenseData.value.payer || !expenseData.value.type || !expenseData.value.date
+    || !expenseData.value.involvedMembers || expenseData.value.involvedMembers.length === 0) {
     return;
   }
 
   const month = expenseData.value.date.slice(0, 7);
   const recordId = expenseData.value.id || Date.now().toString();
+
+  // 根據 involvedMembers 創建參與成員數組
+  const involvedMembersObjects = members.value
+    .filter((member) => expenseData.value.involvedMembers.includes(member.value));
+
   const record = {
     ...expenseData.value,
     id: recordId,
-    members: members.value,
+    members: involvedMembersObjects, // 使用選定的參與者而不是所有成員
+    involvedMembers: expenseData.value.involvedMembers, // 保存參與者ID列表，方便編輯時使用
   };
 
   await set(dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}/${recordId}`), record);
