@@ -21,7 +21,7 @@
         v-model="selectedMonth"
         :options="months"
         label="Select Month"
-        @update:model-value="fetchRecords"
+        @update:model-value="handleMonthChange"
       />
     </div>
 
@@ -229,6 +229,10 @@ const records = ref([]);
 const selectedMonth = ref('');
 const months = ref([]);
 
+// 使用 IntersectionObserver 判斷元素是否進入視窗
+const observer = ref(null);
+const recordRefs = ref([]);
+
 // 消費金額只能輸入數字，並在focus時刪除0，並在blur時補0
 const clearZero = () => {
   if (expenseData.value.amount === 0) {
@@ -332,6 +336,14 @@ const fetchRecords = async () => {
     dbValueWatch = null;
   }
 
+  // Clean up the observer
+  if (observer.value) {
+    recordRefs.value.forEach((el) => {
+      if (el) observer.value.unobserve(el);
+    });
+    recordRefs.value = [];
+  }
+
   const month = typeof selectedMonth.value === 'object' && selectedMonth.value !== null
     ? selectedMonth.value.value
     : selectedMonth.value || new Date().toISOString().slice(0, 7);
@@ -393,23 +405,27 @@ const saveExpense = async () => {
   fetchRecords();
 };
 
-// 使用 IntersectionObserver 判斷元素是否進入視窗
 const setRecordRef = (el) => {
   if (!el) return;
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('fade-in');
-      } else {
-        entry.target.classList.remove('fade-in');
-      }
-    });
-  }, {
-    root: null,
-    threshold: 0.1,
-  });
+  recordRefs.value.push(el.$el);
 
-  observer.observe(el.$el);
+  // Initialize the observer
+  if (!observer.value) {
+    observer.value = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('fade-in');
+        } else {
+          entry.target.classList.remove('fade-in');
+        }
+      });
+    }, {
+      root: null,
+      threshold: 0.1,
+    });
+  }
+
+  observer.value.observe(el.$el);
 };
 
 // 初始化
@@ -440,12 +456,28 @@ onUnmounted(() => {
   if (dbValueWatch) {
     dbValueWatch();
   }
+
+  // Clean up the observer
+  if (observer.value) {
+    recordRefs.value.forEach((el) => {
+      if (el) observer.value.unobserve(el);
+    });
+    observer.value.disconnect();
+  }
 });
 
 // 根據消費類型獲取圖示
 const getIconForType = (type) => {
   const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
   return typeInfo ? typeInfo.icon : 'more_horiz';
+};
+
+// 添加handleMonthChange函数
+const handleMonthChange = async () => {
+  // Reset scroll position
+  window.scrollTo(0, 0);
+  // Get new month's records
+  await fetchRecords();
 };
 </script>
 
