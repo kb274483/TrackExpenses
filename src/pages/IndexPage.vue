@@ -39,7 +39,6 @@
           <q-card-section>
             <div class="text-h6">Create a Group</div>
             <q-input v-model="groupName" label="Group Name" filled />
-            <q-input v-model="groupPassword" label="Password" type="password" filled />
           </q-card-section>
 
           <q-card-actions align="right">
@@ -54,8 +53,7 @@
         <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
           <q-card-section>
             <div class="text-h6">Join a Group</div>
-            <q-input v-model="joinGroupName" label="Group Name" filled />
-            <q-input v-model="joinGroupPassword" label="Password" type="password" filled />
+            <q-input v-model="joinGroupId" label="Group ID" filled />
           </q-card-section>
 
           <q-card-actions align="right">
@@ -81,9 +79,8 @@
 import { getAuth } from 'firebase/auth';
 import { ref, defineEmits } from 'vue';
 import {
-  db, ref as dbRef, get, update, set,
+  db, ref as dbRef, get, set,
 } from 'src/boot/firebase';
-import bcrypt from 'bcryptjs';
 import AlertDialog from 'components/AlertDialog.vue';
 
 const emit = defineEmits(['group-updated']);
@@ -91,9 +88,7 @@ const emit = defineEmits(['group-updated']);
 const showCreateGroup = ref(false);
 const showJoinGroup = ref(false);
 const groupName = ref('');
-const groupPassword = ref('');
-const joinGroupName = ref('');
-const joinGroupPassword = ref('');
+const joinGroupId = ref('');
 
 // 全局 alert 狀態變數
 const alertVisible = ref(false);
@@ -113,12 +108,18 @@ const showAlert = (message) => {
 
 // 創建群組函數
 const createGroup = async () => {
-  if (!groupName.value || !groupPassword.value) {
-    showAlert('Please enter group name and password.');
+  if (!groupName.value) {
+    showAlert('Please enter group name.');
     return;
   }
 
   try {
+    // 確認用戶資訊
+    if (!user || !user.uid || !user.displayName) {
+      showAlert('User information not available. Please try logging in again.');
+      return;
+    }
+
     // 檢查群組名稱是否已存在
     const groupRef = dbRef(db, `/groups/${groupName.value}`);
     const snapshot = await get(groupRef);
@@ -128,53 +129,73 @@ const createGroup = async () => {
       return;
     }
 
-    // 使用 bcrypt 加密密碼
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(groupPassword.value, salt);
+    // 創建唯一的Group ID
+    const groupId = Date.now().toString();
 
-    // 創建新的群組
+    // 分步驟創建，先創建基本結構，再添加成員
+    // 1. 先創建基本群組結構
     await set(groupRef, {
       name: groupName.value,
-      password: hashedPassword,
       createdBy: user.uid,
-      members: {
-        [user.uid]: {
-          name: user.displayName,
-          id: user.uid,
-        },
-      },
+      groupId,
       expenses: {},
+      members: {},
     });
 
-    // 將群組加入到使用者的資料中
-    const userGroupsRef = dbRef(db, `/users/${user.uid}/groups`);
-
-    // 更新使用者的群組列表
-    await update(userGroupsRef, {
-      [groupName.value]: true,
+    // 2. 將成員加入群組
+    const memberRef = dbRef(db, `/groups/${groupName.value}/members/${user.uid}`);
+    await set(memberRef, {
+      name: user.displayName,
+      id: user.uid,
     });
 
+    // 3. 在groupIds下記錄映射關係
+    const groupIdsRef = dbRef(db, `/groupIds/${groupId}`);
+    await set(groupIdsRef, {
+      name: groupName.value,
+    });
+
+    // 4. 將群組加入到使用者的資料中
+    const userGroupsRef = dbRef(db, `/users/${user.uid}/groups/${groupName.value}`);
+    await set(userGroupsRef, true);
+
+    // 成功建立群組
     emit('group-updated');
-
-    showAlert('Group created successfully!');
+    showAlert(`Group created successfully! Your Group ID is: ${groupId}`);
     showCreateGroup.value = false;
     groupName.value = '';
-    groupPassword.value = '';
   } catch (error) {
-    showAlert('Error creating group. Please try again.');
+    showAlert(`Error creating group: ${error.message || 'Please try again.'}`);
   }
 };
 
-// 加入群組函數
 const joinGroup = async () => {
-  if (!joinGroupName.value || !joinGroupPassword.value) {
-    showAlert('Please enter group name and password.');
+  if (!joinGroupId.value) {
+    showAlert('Please enter Group ID.');
     return;
   }
 
   try {
-    // 檢查群組是否存在
-    const groupRef = dbRef(db, `/groups/${joinGroupName.value}`);
+    // 確認用戶資訊
+    if (!user || !user.uid || !user.displayName) {
+      showAlert('User information not available. Please try logging in again.');
+      return;
+    }
+
+    // 1. 先通過Group ID查找對應的Group Name
+    const groupIdsRef = dbRef(db, `/groupIds/${joinGroupId.value}`);
+    const groupIdSnapshot = await get(groupIdsRef);
+
+    if (!groupIdSnapshot.exists()) {
+      showAlert('Group does not exist.');
+      return;
+    }
+
+    const groupData = groupIdSnapshot.val();
+    const targetGroupName = groupData.name;
+
+    // 2. 檢查群組是否存在
+    const groupRef = dbRef(db, `/groups/${targetGroupName}`);
     const snapshot = await get(groupRef);
 
     if (!snapshot.exists()) {
@@ -182,39 +203,24 @@ const joinGroup = async () => {
       return;
     }
 
-    const groupData = snapshot.val();
-    const hashedPassword = groupData.password;
-
-    // 比對密碼
-    const isPasswordCorrect = bcrypt.compareSync(joinGroupPassword.value, hashedPassword);
-    if (!isPasswordCorrect) {
-      showAlert('Incorrect password.');
-      return;
-    }
-
-    // 如果密碼正確，將使用者加入該群組
-    const groupMembersRef = dbRef(db, `/groups/${joinGroupName.value}/members`);
-    await update(groupMembersRef, {
-      [user.uid]: {
-        name: user.displayName,
-        id: user.uid,
-      },
+    // 3. 將使用者加入該群組
+    const memberRef = dbRef(db, `/groups/${targetGroupName}/members/${user.uid}`);
+    await set(memberRef, {
+      name: user.displayName,
+      id: user.uid,
     });
 
-    // 更新使用者的群組列表
-    const userGroupsRef = dbRef(db, `/users/${user.uid}/groups`);
-    await update(userGroupsRef, {
-      [joinGroupName.value]: true,
-    });
+    // 4. 更新使用者的群組列表
+    const userGroupRef = dbRef(db, `/users/${user.uid}/groups/${targetGroupName}`);
+    await set(userGroupRef, true);
 
     emit('group-updated');
 
     showAlert('Successfully joined the group!');
     showJoinGroup.value = false;
-    joinGroupName.value = '';
-    joinGroupPassword.value = '';
+    joinGroupId.value = '';
   } catch (error) {
-    showAlert('Error joining group. Please try again.');
+    showAlert(`Error joining group: ${error.message || 'Please try again.'}`);
   }
 };
 </script>

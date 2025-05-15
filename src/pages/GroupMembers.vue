@@ -7,6 +7,23 @@
       <span class="tw-font-bold tw-text-gray-600 tw-text-lg">{{ watchGroupName }}</span>
       群組成員
     </div>
+
+    <!-- 顯示群組ID -->
+    <div v-if="groupId" class="tw-bg-gray-100 tw-p-3 tw-rounded tw-mb-4 tw-mt-2">
+      <div class="tw-flex tw-justify-between tw-items-center">
+        <div>
+          <div class="tw-text-sm tw-text-gray-500">群組ID</div>
+          <div class="tw-font-medium">{{ groupId }}</div>
+        </div>
+        <q-btn flat round icon="content_copy" color="primary" @click="copyGroupId">
+          <q-tooltip>複製群組ID</q-tooltip>
+        </q-btn>
+      </div>
+      <div class="tw-text-xs tw-text-gray-500 tw-mt-1">
+        分享此ID給朋友，他們可以使用此ID加入群組
+      </div>
+    </div>
+
     <!-- 顯示群組成員 -->
     <q-list>
       <q-item
@@ -36,19 +53,32 @@
       @ok="removeMember"
       @cancel="onCancel"
     />
+
+    <!-- Copy Group ID Success -->
+    <q-dialog v-model="showCopySuccess" position="bottom">
+      <q-card class="tw-bg-gray-600 text-white">
+        <q-card-section class="row items-center">
+          <q-icon name="check_circle" class="text-h6 q-mr-sm" />
+          <span>Copy Group ID Success</span>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import {
-  db, ref as dbRef, get, update,
+  db, ref as dbRef, get, update, set,
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
 import { getAuth } from 'firebase/auth';
 import AlertDialog from 'components/AlertDialog.vue';
+import { useQuasar } from 'quasar';
 
-// 獲取群組名稱
+const $q = useQuasar();
+
+// 取得群組名稱
 const route = useRoute();
 const { groupName } = route.params;
 const watchGroupName = ref(groupName);
@@ -56,11 +86,13 @@ const watchGroupName = ref(groupName);
 const auth = getAuth();
 const user = auth.currentUser;
 
-// 存放群組成員
+// 群組成員
 const members = ref([]);
 const isGroupCreator = ref(false);
+const groupId = ref('');
+const showCopySuccess = ref(false);
 
-// 用於確認的 AlertDialog 相關狀態
+//  AlertDialog 相關狀態
 const alertVisible = ref(false);
 const alertMessage = ref('');
 const isConfirm = ref(false);
@@ -73,6 +105,38 @@ const showAlert = (message, confirm = false) => {
   alertVisible.value = true;
 };
 
+// 為沒有group id的現有群組生成ID
+const generateAndSaveGroupId = async () => {
+  try {
+    // 創建基於時間戳的唯一ID（添加一個隨機數以防重複）
+    const newGroupId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+    // 更新群組數據 groupId
+    const groupRef = dbRef(db, `/groups/${watchGroupName.value}`);
+    await update(groupRef, { groupId: newGroupId });
+    const groupIdsRef = dbRef(db, `/groupIds/${newGroupId}`);
+    await set(groupIdsRef, { name: watchGroupName.value });
+
+    // 更新本地狀態
+    groupId.value = newGroupId;
+
+    $q.notify({
+      color: 'positive',
+      position: 'bottom',
+      message: '已為此群組生成ID',
+      icon: 'info',
+      timeout: 3000,
+    });
+  } catch (error) {
+    $q.notify({
+      color: 'negative',
+      position: 'bottom',
+      message: '生成群組ID失敗',
+      icon: 'error',
+    });
+  }
+};
+
 // 獲取群組成員和判斷是否為創建者
 const fetchGroupMembers = async () => {
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}`);
@@ -82,6 +146,31 @@ const fetchGroupMembers = async () => {
     const groupData = snapshot.val();
     members.value = Object.values(groupData.members);
     isGroupCreator.value = groupData.createdBy === user.uid;
+
+    // 取得群组ID
+    if (groupData.groupId) {
+      groupId.value = groupData.groupId;
+    } else if (isGroupCreator.value) {
+      await generateAndSaveGroupId();
+    }
+  }
+};
+
+// 複製群組ID到剪貼簿
+const copyGroupId = async () => {
+  try {
+    await navigator.clipboard.writeText(groupId.value);
+    showCopySuccess.value = true;
+    setTimeout(() => {
+      showCopySuccess.value = false;
+    }, 2000);
+  } catch (err) {
+    $q.notify({
+      color: 'negative',
+      position: 'bottom',
+      message: '複製失敗，請手動複製',
+      icon: 'error',
+    });
   }
 };
 
@@ -114,6 +203,12 @@ const removeMember = async () => {
     alertVisible.value = false;
     memberToDelete.value = null;
   }
+};
+
+// 處理取消操作
+const onCancel = () => {
+  alertVisible.value = false;
+  memberToDelete.value = null;
 };
 
 watch(
