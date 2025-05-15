@@ -68,8 +68,8 @@ import { useRoute } from 'vue-router';
 import {
   db, ref as dbRef, get, set,
 } from 'src/boot/firebase';
-import dayjs from 'dayjs';
 import { getAuth } from 'firebase/auth';
+import { generateMonths } from 'src/utils/generateDate';
 
 // 獲取當前用戶
 const auth = getAuth();
@@ -89,17 +89,17 @@ const { groupName } = route.params;
 const watchGroupName = ref(groupName);
 
 // 生成月份
-const generateMonths = () => {
-  const today = dayjs();
-  for (let i = 0; i < 6; i++) {
-    const month = today.subtract(i, 'month');
-    months.value.push({
-      label: month.format('MMMM YYYY'),
-      value: month.format('YYYY-MM'),
-    });
-  }
-  selectedMonth.value = months.value[0].value;
-};
+// const generateMonths = () => {
+//   const today = dayjs();
+//   for (let i = 0; i < 12; i++) {
+//     const month = today.subtract(i, 'month');
+//     months.value.push({
+//       label: month.format('MMMM YYYY'),
+//       value: month.format('YYYY-MM'),
+//     });
+//   }
+//   selectedMonth.value = months.value[0].value;
+// };
 
 // 取得群組成員
 const members = ref([]);
@@ -243,6 +243,7 @@ watch(
 
 // 初始化
 onMounted(async () => {
-  generateMonths();
+  months.value = generateMonths();
+  selectedMonth.value = months.value[0].value;
 });
 </script>

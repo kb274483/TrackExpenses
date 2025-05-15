@@ -55,7 +55,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { db, ref as dbRef, get } from 'src/boot/firebase';
 import * as echarts from 'echarts';
-import dayjs from 'dayjs';
+import { generateMonths } from 'src/utils/generateDate';
 
 // 獲取群組名稱
 const route = useRoute();
@@ -186,17 +186,17 @@ const fetchCustomExpenseTypes = async () => {
 };
 
 // 生成月份選項
-const generateMonths = () => {
-  const today = dayjs();
-  for (let i = 0; i < 6; i++) {
-    const month = today.subtract(i, 'month');
-    months.value.push({
-      label: month.format('MMMM YYYY'),
-      value: month.format('YYYY-MM'),
-    });
-  }
-  selectedMonth.value = months.value[0].value;
-};
+// const generateMonths = () => {
+//   const today = dayjs();
+//   for (let i = 0; i < 12; i++) {
+//     const month = today.subtract(i, 'month');
+//     months.value.push({
+//       label: month.format('MMMM YYYY'),
+//       value: month.format('YYYY-MM'),
+//     });
+//   }
+//   selectedMonth.value = months.value[0].value;
+// };
 
 // 更新圓餅圖
 const updatePieChart = (data) => {
@@ -269,7 +269,8 @@ watch(
 
 // 初始化圖表和數據
 onMounted(() => {
-  generateMonths();
+  months.value = generateMonths();
+  selectedMonth.value = months.value[0].value;
 
   const chartDom = document.getElementById('pieChart');
   chart.value = echarts.init(chartDom);

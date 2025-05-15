@@ -177,9 +177,10 @@ import {
 import {
   db, ref as dbRef, get, set, remove, onValue,
 } from 'src/boot/firebase';
-import { useRoute } from 'vue-router';
 import dayjs from 'dayjs';
+import { useRoute } from 'vue-router';
 import { getAuth } from 'firebase/auth';
+import { generateMonths } from 'src/utils/generateDate';
 
 // 儲存DB監聽器
 let dbValueWatch = null;
@@ -404,17 +405,17 @@ const setRecordRef = (el) => {
 };
 
 // 生成過去半年的月份
-const generateMonths = () => {
-  const today = dayjs();
-  for (let i = 0; i < 6; i++) {
-    const month = today.subtract(i, 'month');
-    months.value.push({
-      label: month.format('MMMM YYYY'),
-      value: month.format('YYYY-MM'),
-    });
-  }
-  selectedMonth.value = months.value[0].value;
-};
+// const generateMonths = () => {
+//   const today = dayjs();
+//   for (let i = 0; i < 12; i++) {
+//     const month = today.subtract(i, 'month');
+//     months.value.push({
+//       label: month.format('MMMM YYYY'),
+//       value: month.format('YYYY-MM'),
+//     });
+//   }
+//   selectedMonth.value = months.value[0].value;
+// };
 
 // 根據消費類型獲取圖示
 const getIconForType = (type) => {
@@ -435,7 +436,8 @@ watch(
 
 // 初始化數據
 onMounted(() => {
-  generateMonths();
+  months.value = generateMonths();
+  selectedMonth.value = months.value[0].value;
   fetchMembers();
   fetchRecords();
 });
