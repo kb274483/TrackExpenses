@@ -327,7 +327,15 @@ const fetchCustomExpenseTypes = async () => {
 
 // 加載消費記錄和群組成員
 const fetchRecords = async () => {
-  const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
+  if (dbValueWatch) {
+    dbValueWatch();
+    dbValueWatch = null;
+  }
+
+  const month = typeof selectedMonth.value === 'object' && selectedMonth.value !== null
+    ? selectedMonth.value.value
+    : selectedMonth.value || new Date().toISOString().slice(0, 7);
+
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
 
   dbValueWatch = onValue(groupRef, (snapshot) => {
@@ -404,32 +412,18 @@ const setRecordRef = (el) => {
   observer.observe(el.$el);
 };
 
-// 生成過去半年的月份
-// const generateMonths = () => {
-//   const today = dayjs();
-//   for (let i = 0; i < 12; i++) {
-//     const month = today.subtract(i, 'month');
-//     months.value.push({
-//       label: month.format('MMMM YYYY'),
-//       value: month.format('YYYY-MM'),
-//     });
-//   }
-//   selectedMonth.value = months.value[0].value;
-// };
-
-// 根據消費類型獲取圖示
-const getIconForType = (type) => {
-  const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
-  return typeInfo ? typeInfo.icon : 'more_horiz';
+// 初始化
+const initializeData = async (newGroupName) => {
+  watchGroupName.value = newGroupName;
+  await fetchMembers();
+  await fetchCustomExpenseTypes();
+  await fetchRecords();
 };
 
 watch(
   () => route.params.groupName, // 監聽路由參數中的 groupName
   async (newGroupName) => {
-    watchGroupName.value = newGroupName;
-    await fetchMembers();
-    await fetchRecords();
-    await fetchCustomExpenseTypes();
+    await initializeData(newGroupName);
   },
   { immediate: true }, // 當組件初始化時立即執行一次
 );
@@ -437,9 +431,8 @@ watch(
 // 初始化數據
 onMounted(() => {
   months.value = generateMonths();
-  selectedMonth.value = months.value[0].value;
-  fetchMembers();
-  fetchRecords();
+  const [firstMonth] = months.value;
+  selectedMonth.value = firstMonth;
 });
 
 onUnmounted(() => {
@@ -448,6 +441,12 @@ onUnmounted(() => {
     dbValueWatch();
   }
 });
+
+// 根據消費類型獲取圖示
+const getIconForType = (type) => {
+  const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
+  return typeInfo ? typeInfo.icon : 'more_horiz';
+};
 </script>
 
 <style scoped>
