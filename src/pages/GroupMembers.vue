@@ -24,6 +24,14 @@
       </div>
     </div>
 
+    <!-- 新增虛擬成員 -->
+    <div class="tw-bg-gray-50 tw-p-3 tw-rounded tw-mb-3 tw-flex tw-gap-2 tw-items-end">
+      <div class="tw-flex-1">
+        <q-input v-model="newVirtualName" label="虛擬成員名稱" dense />
+      </div>
+      <q-btn color="primary" icon="person_add" label="新增虛擬成員" @click="addVirtualMember" />
+    </div>
+
     <!-- 顯示群組成員 -->
     <q-list>
       <q-item
@@ -35,13 +43,22 @@
         <div class="tw-flex tw-items-center tw-gap-2">
           <q-icon name="person" class="tw-text-3xl tw-text-gray-600" />
           <q-item-label>{{ member.name }}</q-item-label>
+          <q-chip
+            v-if="member.isVirtual"
+            size="sm"
+            color="teal"
+            text-color="white"
+            outline
+          >
+            Virtual
+          </q-chip>
         </div>
 
-        <!-- 群組創建者，顯示移除成員按鈕 -->
-        <!-- <q-btn v-if="isGroupCreator"
-          icon="delete" color="negative"
-          @click="confirmDeleteMember(member)"
-        /> -->
+        <!-- 僅允許移除虛擬成員（任何群組成員皆可） -->
+        <q-btn v-if="member.isVirtual"
+          icon="delete" color="negative" flat
+          @click="confirmDeleteVirtual(member)"
+        />
       </q-item>
     </q-list>
 
@@ -69,7 +86,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue';
 import {
-  db, ref as dbRef, get, update, set,
+  db, ref as dbRef, get, update, set, remove,
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
 import { getAuth } from 'firebase/auth';
@@ -91,6 +108,7 @@ const members = ref([]);
 const isGroupCreator = ref(false);
 const groupId = ref('');
 const showCopySuccess = ref(false);
+const newVirtualName = ref('');
 
 //  AlertDialog 相關狀態
 const alertVisible = ref(false);
@@ -174,35 +192,57 @@ const copyGroupId = async () => {
   }
 };
 
-// 確認刪除成員前的提示
-// const confirmDeleteMember = (member) => {
-//   memberToDelete.value = member;
-//   showAlert(`你確定要刪除 ${member.name} 嗎？`, true);
-// };
+// 新增虛擬成員
+const addVirtualMember = async () => {
+  const name = (newVirtualName.value || '').trim();
+  if (!name) return;
+  const virtualId = `v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const memberRef = dbRef(db, `/groups/${watchGroupName.value}/members/${virtualId}`);
+  await set(memberRef, { name, id: virtualId, isVirtual: true });
+  newVirtualName.value = '';
+  await fetchGroupMembers();
+  $q.notify({ color: 'positive', message: '已新增虛擬成員', position: 'bottom' });
+};
+
+// 確認刪除虛擬成員
+const confirmDeleteVirtual = (member) => {
+  memberToDelete.value = member;
+  showAlert(`你確定要刪除虛擬成員「${member.name}」嗎？`, true);
+};
 
 // 移除成員功能
 const removeMember = async () => {
-  if (!isGroupCreator.value) return;
-  if (memberToDelete.value) {
-    if (memberToDelete.value.id === user.uid) {
-      alertVisible.value = false;
-      memberToDelete.value = null;
-      setTimeout(() => showAlert('You cannot remove yourself from the group.'), 100);
-      return;
-    }
-    // 移除成員
-    const groupRef = dbRef(db, `/groups/${groupName}/members/${memberToDelete.value.id}`);
-    await update(groupRef, null);
+  if (!memberToDelete.value) return;
+  const target = memberToDelete.value;
+  const isVirtual = !!target.isVirtual;
 
-    // 移除成員的群組
-    const userGroupRef = dbRef(db, `/users/${memberToDelete.value.id}/groups/${groupName}`);
-    await update(userGroupRef, null);
-
-    fetchGroupMembers(); // 重新獲取群組成員
-    // 重置狀態
+  // 非虛擬成員：僅允許創建者刪除
+  if (!isVirtual && !isGroupCreator.value) {
     alertVisible.value = false;
     memberToDelete.value = null;
+    return;
   }
+  if (!isVirtual && target.id === user.uid) {
+    alertVisible.value = false;
+    memberToDelete.value = null;
+    setTimeout(() => showAlert('You cannot remove yourself from the group.'), 100);
+    return;
+  }
+
+  // 移除群組成員節點
+  const groupMemberRef = dbRef(db, `/groups/${groupName}/members/${target.id}`);
+  await remove(groupMemberRef);
+
+  // 若為真實用戶，同步移除其 users 下的群組映射
+  if (!isVirtual) {
+    const userGroupRef = dbRef(db, `/users/${target.id}/groups/${groupName}`);
+    await remove(userGroupRef);
+  }
+
+  await fetchGroupMembers();
+  alertVisible.value = false;
+  memberToDelete.value = null;
+  $q.notify({ color: 'positive', message: '已移除成員', position: 'bottom' });
 };
 
 // 處理取消操作

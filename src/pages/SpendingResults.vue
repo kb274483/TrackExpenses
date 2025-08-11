@@ -195,8 +195,30 @@ const calculateSettlements = async () => {
     const expenses = Object.values(snapshot.val());
     const debtMap = {};
     const memberExpenses = {}; // 紀錄每個成員的花費
+    const memberMapById = new Map();
 
-    // 初始化每個成員的債務關係 debtMap 和花費 memberExpenses
+    (members.value || []).forEach((m) => {
+      if (m && m.value) memberMapById.set(m.value, { label: m.label, value: m.value });
+    });
+    // 再掃過當月所有紀錄，把付款人與參與人補齊
+    expenses.forEach((expense) => {
+      const payer = expense && expense.payer;
+      if (payer && payer.value) {
+        if (!memberMapById.has(payer.value)) {
+          memberMapById.set(payer.value, { label: payer.label || 'Unknown', value: payer.value });
+        }
+      }
+      const involved = Array.isArray(expense.members) ? expense.members : [];
+      involved.forEach((mem) => {
+        if (mem && mem.value && !memberMapById.has(mem.value)) {
+          memberMapById.set(mem.value, { label: mem.label || 'Unknown', value: mem.value });
+        }
+      });
+    });
+    // 用合併後的名單替換本頁的 members，以利後續 getMemberName 與計算使用
+    members.value = Array.from(memberMapById.values());
+
+    // 初始化每個成員的債務關係 debtMap 和花費 memberExpenses（使用合併後的 members）
     members.value.forEach((member) => {
       debtMap[member.value] = 0;
       memberExpenses[member.value] = 0;
@@ -209,11 +231,19 @@ const calculateSettlements = async () => {
       const involvedMembers = expense.members; // 涉及的成員
       const perPersonAmount = totalAmount / involvedMembers.length; // 每個成員應付的金額
 
+      if (debtMap[payerId] === undefined) {
+        debtMap[payerId] = 0;
+        memberExpenses[payerId] = 0;
+      }
       debtMap[payerId] += totalAmount; // 累加付款人的應付金額
       memberExpenses[payerId] += totalAmount; // 累加付款人的花費金額
 
       // 每個成員（包含付款人）應分擔的金額
       involvedMembers.forEach((member) => {
+        if (debtMap[member.value] === undefined) {
+          debtMap[member.value] = 0;
+          memberExpenses[member.value] = memberExpenses[member.value] || 0;
+        }
         debtMap[member.value] -= perPersonAmount; // 每個成員減去應付的分擔金額
       });
     });
