@@ -17,6 +17,18 @@
       />
     </div>
 
+    <!-- 幣別選擇器（轉換成新台幣） -->
+    <div class="tw-mb-4">
+      <q-select
+        v-model="selectedCurrency"
+        :options="currencyOptions"
+        label="幣別（轉換成新台幣）"
+        emit-value
+        map-options
+        @update:model-value="onCurrencyChange"
+      />
+    </div>
+
     <!-- 成員總花費列表 -->
     <div class="tw-mb-4">
       <p class="tw-text-gray-600 tw-font-semibold tw-mb-1">個人消費總額：</p>
@@ -26,7 +38,7 @@
         >
           <q-item-label class="tw-flex tw-items-center">
             <span class="tw-font-semibold tw-mr-2">{{ total.member }}</span>
-            <span class="tw-font-bold tw-text-red-500">$：{{ total.amount }}</span>
+            <span class="tw-font-bold tw-text-red-500">$：{{ formatAmount(total.amount) }}</span>
           </q-item-label>
         </q-item>
       </q-list>
@@ -46,7 +58,7 @@
           <q-icon name="money" class="tw-text-gray-600 tw-text-3xl" />
           <q-icon name="arrow_forward" class="tw-text-gray-600 tw-text-2xl" />
           <span class="tw-font-semibold tw-text-primary">{{ settlement.receiver }}</span>
-          <span class="tw-font-bold tw-text-red-500"> ${{ settlement.amount }}</span>
+          <span class="tw-font-bold tw-text-red-500"> ${{ formatAmount(settlement.amount) }}</span>
         </q-item-label>
         <q-checkbox
           keep-color size="lg"
@@ -70,6 +82,7 @@ import {
 } from 'src/boot/firebase';
 import { getAuth } from 'firebase/auth';
 import { generateMonths } from 'src/utils/generateDate';
+import axios from 'axios';
 
 // 獲取當前用戶
 const auth = getAuth();
@@ -82,6 +95,16 @@ const months = ref([]);
 // 结果
 const settlements = ref([]);
 const totalExpenses = ref([]);
+
+// 匯率/幣別
+const selectedCurrency = ref(null); // null 代表不轉換，選擇外幣時轉為 TWD
+const currencyOptions = [
+  { label: '不轉換', value: null },
+  { label: '美金 USD → TWD', value: 'USD' },
+  { label: '日幣 JPY → TWD', value: 'JPY' },
+  { label: '歐元 EUR → TWD', value: 'EUR' },
+];
+const conversionRate = ref(1); // 以選擇的幣別換算成 TWD 的比率
 
 // 群组名稱
 const route = useRoute();
@@ -229,8 +252,9 @@ const calculateSettlements = async () => {
 };
 
 const totalGroupExpense = computed(() => {
-  const total = totalExpenses.value.reduce((acc, curr) => acc + Number(curr.amount), 0);
-  return `總花費: $${Math.round(total)}`;
+  const baseTotal = totalExpenses.value.reduce((acc, curr) => acc + Number(curr.amount), 0);
+  const converted = Math.round(baseTotal * Number(conversionRate.value || 1));
+  return `總花費: $${converted}`;
 });
 
 // 判斷是否為應收款人
@@ -243,6 +267,44 @@ const updateSettlementStatus = async () => {
 
   // 更新資料庫狀態
   await set(groupRef, settlements.value);
+};
+
+// 即時匯率：將選擇的幣別轉為 TWD 的匯率
+const fetchConversionRate = async (fromCurrency) => {
+  try {
+    if (!fromCurrency) {
+      conversionRate.value = 1;
+      return;
+    }
+    const { data } = await axios.get(`https://open.er-api.com/v6/latest/${fromCurrency}`);
+    const primaryRate = data && data.result === 'success' && data.rates && data.rates.TWD
+      ? Number(data.rates.TWD)
+      : null;
+    if (primaryRate && Number.isFinite(primaryRate)) {
+      conversionRate.value = primaryRate;
+      return;
+    }
+    // 備用匯率來源
+    const fallbackUrl = `https://cdn.jsdelivr.net/gh/fawazahmed0/currency-api@1/latest/currencies/${String(fromCurrency)
+      .toLowerCase()}/twd.json`;
+    const fallback = await axios.get(fallbackUrl);
+    const fallbackRate = (fallback && fallback.data && fallback.data.twd)
+      ? Number(fallback.data.twd)
+      : 1;
+    conversionRate.value = fallbackRate || 1;
+  } catch (e) {
+    conversionRate.value = 1;
+  }
+};
+
+const onCurrencyChange = async (val) => {
+  await fetchConversionRate(val);
+};
+
+// 將金額依據 conversionRate 轉為 TWD 並四捨五入
+const formatAmount = (amount) => {
+  const num = Number(amount) || 0;
+  return Math.round(num * Number(conversionRate.value || 1));
 };
 
 watch(
