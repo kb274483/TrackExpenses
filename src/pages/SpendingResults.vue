@@ -145,9 +145,10 @@ const generateSettlementList = (debtMap) => {
       const paymentAmount = Math.min(receiver.amount, payer.amount); // 確定支付的金額
       settlementList.push({
         payer: getMemberName(payer.memberId),
+        payerId: payer.memberId,
         receiver: getMemberName(receiver.memberId),
         receiverId: receiver.memberId,
-        amount: paymentAmount.toFixed(2),
+        amount: Math.round(paymentAmount),
       });
 
       receiver.amount -= paymentAmount; // 更新應收款人的金額
@@ -194,33 +195,46 @@ const calculateSettlements = async () => {
       });
     });
 
-    // 設置每個成員的花費總額
+    // 設置每個成員的花費總額（四捨五入到整數）
     totalExpenses.value = Object.entries(memberExpenses).map(([memberId, amount]) => ({
       member: getMemberName(memberId),
-      amount: amount.toFixed(2),
+      amount: Math.round(amount),
     }));
 
-    let paidStatus = false;// 初始未付款
+    // 讀取既有的已付款狀態，以逐筆保留
+    const existingPaidMap = new Map();
     if (debtStatus.exists()) {
-      paidStatus = debtStatus.val()[0].paid;
+      const raw = debtStatus.val();
+      const existingList = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+      existingList.forEach((item) => {
+        if (!item) return;
+        const keyByIds = `${item.payerId || ''}-${item.receiverId || ''}`;
+        const keyByNames = `${item.payer}-${item.receiver}`;
+        existingPaidMap.set(keyByIds, !!item.paid);
+        existingPaidMap.set(keyByNames, !!item.paid);
+      });
     }
-    // 生成結算列表
-    settlements.value = generateSettlementList(debtMap).map((settlement) => ({
-      ...settlement,
-      paid: paidStatus,
-    }));
+    // 生成結算列表（金額四捨五入到整數），並合併既有已付款狀態
+    settlements.value = generateSettlementList(debtMap).map((settlement) => {
+      const keyByIds = `${settlement.payerId}-${settlement.receiverId}`;
+      const keyByNames = `${settlement.payer}-${settlement.receiver}`;
+      const paid = existingPaidMap.has(keyByIds)
+        ? existingPaidMap.get(keyByIds)
+        : (existingPaidMap.get(keyByNames) || false);
+      return { ...settlement, paid };
+    });
   } else {
     settlements.value = [];
   }
 };
 
 const totalGroupExpense = computed(() => {
-  const total = totalExpenses.value.reduce((acc, curr) => acc + parseFloat(curr.amount), 0);
-  return `總花費: $${total.toFixed(2)}`;
+  const total = totalExpenses.value.reduce((acc, curr) => acc + Number(curr.amount), 0);
+  return `總花費: $${Math.round(total)}`;
 });
 
 // 判斷是否為應收款人
-const isReceiver = computed(() => (settlement) => settlement.receiverId === user.uid);
+const isReceiver = computed(() => (settlement) => (user && settlement.receiverId === user.uid));
 
 // 更新結算狀態
 const updateSettlementStatus = async () => {
@@ -244,6 +258,7 @@ watch(
 // 初始化
 onMounted(async () => {
   months.value = generateMonths();
-  selectedMonth.value = months.value[0].value;
+  const [firstMonth] = months.value;
+  selectedMonth.value = firstMonth;
 });
 </script>

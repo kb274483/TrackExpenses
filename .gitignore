@@ -36,3 +36,5 @@ yarn-error.log*
 
 firebase-debug.log
 hosting.ZGlzdC9wd2E.cache
+
+.cursor

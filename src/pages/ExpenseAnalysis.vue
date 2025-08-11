@@ -270,7 +270,8 @@ watch(
 // 初始化圖表和數據
 onMounted(() => {
   months.value = generateMonths();
-  selectedMonth.value = months.value[0].value;
+  const [firstMonth] = months.value;
+  selectedMonth.value = firstMonth;
 
   const chartDom = document.getElementById('pieChart');
   chart.value = echarts.init(chartDom);
