@@ -254,7 +254,10 @@ const calculateSettlements = async () => {
 const totalGroupExpense = computed(() => {
   const baseTotal = totalExpenses.value.reduce((acc, curr) => acc + Number(curr.amount), 0);
   const converted = Math.round(baseTotal * Number(conversionRate.value || 1));
-  return `總花費: $${converted}`;
+  const formatted = Number.isFinite(converted)
+    ? converted.toLocaleString('zh-TW')
+    : '0';
+  return `總花費: $${formatted}`;
 });
 
 // 判斷是否為應收款人
@@ -301,10 +304,13 @@ const onCurrencyChange = async (val) => {
   await fetchConversionRate(val);
 };
 
-// 將金額依據 conversionRate 轉為 TWD 並四捨五入
+// 將金額依據 conversionRate 轉為 TWD，四捨五入並加上千分位
 const formatAmount = (amount) => {
   const num = Number(amount) || 0;
-  return Math.round(num * Number(conversionRate.value || 1));
+  const converted = Math.round(num * Number(conversionRate.value || 1));
+  return Number.isFinite(converted)
+    ? converted.toLocaleString('zh-TW')
+    : '0';
 };
 
 watch(
