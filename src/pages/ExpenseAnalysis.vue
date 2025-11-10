@@ -16,6 +16,24 @@
         label="Select Month"
         @update:model-value="calculateCategoryTotals"
       />
+      <div class="tw-flex tw-gap-2 tw-mt-1 tw-items-center">
+        <q-input
+          v-model="expenseData.startDate"
+          label="起始日期"
+          type="date"
+          class="tw-h-full"
+        />
+        <q-input
+          v-model="expenseData.endDate"
+          label="結束日期"
+          type="date"
+          class="tw-h-full"
+        />
+        <q-btn label="Search" color="primary"
+          class="tw-w-full tw-h-full"
+          @click="calculateCategoryTotals('range')"
+        />
+      </div>
     </div>
 
     <!-- 圓餅圖 -->
@@ -24,6 +42,14 @@
     </div>
 
     <!-- 消費類別表格 -->
+    <div class="tw-mx-4 tw-flex tw-justify-end tw-items-center tw-gap-1">
+      <p class="tw-text-gray-600 tw-font-semibold">全類別消費：</p>
+      <p class="tw-text-gray-600 tw-font-bold tw-text-xl">
+        $ {{categoryTotals.reduce(
+          (acc, curr) => acc + Number(curr.total), 0).toFixed(2)
+        }}
+      </p>
+    </div>
     <q-table
       :rows="categoryTotals"
       :columns="columns"
@@ -56,6 +82,7 @@ import { useRoute } from 'vue-router';
 import { db, ref as dbRef, get } from 'src/boot/firebase';
 import * as echarts from 'echarts';
 import { generateMonths } from 'src/utils/generateDate';
+import dayjs from 'dayjs';
 
 // 獲取群組名稱
 const route = useRoute();
@@ -66,6 +93,10 @@ const watchGroupName = ref(groupName);
 const selectedMonth = ref('');
 const months = ref([]);
 const categoryTotals = ref([]);
+const expenseData = ref({
+  startDate: new Date().toISOString().slice(0, 10),
+  endDate: new Date().toISOString().slice(0, 10),
+});
 
 // 分頁
 const pagination = ref({
@@ -185,21 +216,9 @@ const fetchCustomExpenseTypes = async () => {
   mergeExpenseTypes();
 };
 
-// 生成月份選項
-// const generateMonths = () => {
-//   const today = dayjs();
-//   for (let i = 0; i < 12; i++) {
-//     const month = today.subtract(i, 'month');
-//     months.value.push({
-//       label: month.format('MMMM YYYY'),
-//       value: month.format('YYYY-MM'),
-//     });
-//   }
-//   selectedMonth.value = months.value[0].value;
-// };
-
 // 更新圓餅圖
 const updatePieChart = (data) => {
+  if (!chart.value) return;
   const chartData = data
     .filter((item) => item.total > 0)
     .map((item) => ({
@@ -227,34 +246,77 @@ const updatePieChart = (data) => {
 };
 
 // 計算每個消費類別的總額
-const calculateCategoryTotals = async () => {
-  const month = selectedMonth.value.value || new Date().toISOString().slice(0, 7);
-  const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
-  const snapshot = await get(groupRef);
+const calculateCategoryTotals = async (mode = 'month') => {
+  const totals = {};
+  expenseTypes.value.forEach((type) => {
+    totals[type.value] = 0;
+  });
 
-  if (snapshot.exists()) {
-    const expenses = Object.values(snapshot.val());
-    const totals = {};
+  // range mode 區間統計
+  if (mode === 'range') {
+    const start = expenseData.value.startDate;
+    const end = expenseData.value.endDate;
+    if (!start || !end || dayjs(end).isBefore(dayjs(start))) {
+      categoryTotals.value = expenseTypes.value.map((type) => ({
+        category: type.label,
+        total: '0.00',
+        color: type.color,
+      }));
+      updatePieChart([]);
+      return;
+    }
 
-    expenseTypes.value.forEach((type) => {
-      totals[type.value] = 0;
+    // 取得區間內所有月份
+    const monthsInRange = [];
+    let cursor = dayjs(start).startOf('month');
+    const last = dayjs(end).startOf('month');
+    while (cursor.isBefore(last) || cursor.isSame(last)) {
+      monthsInRange.push(cursor.format('YYYY-MM'));
+      cursor = cursor.add(1, 'month');
+    }
+
+    // 依序取得區間內所有月份的消費資料
+    const snapshots = await Promise.all(
+      monthsInRange.map((m) => get(dbRef(db, `/groups/${watchGroupName.value}/expenses/${m}`))),
+    );
+
+    snapshots.forEach((snapshot) => {
+      if (!snapshot.exists()) return;
+      const expenses = Object.values(snapshot.val());
+      expenses.forEach((expense) => {
+        const d = expense.date;
+        if (d && !dayjs(d).isBefore(dayjs(start)) && !dayjs(d).isAfter(dayjs(end))) {
+          const key = expense.type?.value;
+          if (key && totals[key] !== undefined) {
+            totals[key] += parseFloat(expense.amount);
+          }
+        }
+      });
     });
-
-    expenses.forEach((expense) => {
-      totals[expense.type.value] += parseFloat(expense.amount);
-    });
-
-    categoryTotals.value = expenseTypes.value.map((type) => ({
-      category: type.label,
-      total: totals[type.value].toFixed(2),
-      color: type.color,
-    }));
-
-    updatePieChart(categoryTotals.value);
   } else {
-    categoryTotals.value = [];
-    updatePieChart([]);
+    // month mode 月份統計
+    const month = (selectedMonth.value && selectedMonth.value.value)
+      || new Date().toISOString().slice(0, 7);
+    const groupRef = dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}`);
+    const snapshot = await get(groupRef);
+    if (snapshot.exists()) {
+      const expenses = Object.values(snapshot.val());
+      expenses.forEach((expense) => {
+        const key = expense.type?.value;
+        if (key && totals[key] !== undefined) {
+          totals[key] += parseFloat(expense.amount);
+        }
+      });
+    }
   }
+
+  // 產生表格資料
+  categoryTotals.value = expenseTypes.value.map((type) => ({
+    category: type.label,
+    total: totals[type.value].toFixed(2),
+    color: type.color,
+  }));
+  updatePieChart(categoryTotals.value);
 };
 
 watch(
