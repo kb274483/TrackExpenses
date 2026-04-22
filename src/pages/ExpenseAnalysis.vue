@@ -247,8 +247,10 @@ const updatePieChart = (data) => {
 
 // 計算每個消費類別的總額
 const calculateCategoryTotals = async (mode = 'month') => {
+  // 快照當下的類別清單,避免 await 期間被其他流程覆寫造成資料不一致
+  const types = expenseTypes.value.slice();
   const totals = {};
-  expenseTypes.value.forEach((type) => {
+  types.forEach((type) => {
     totals[type.value] = 0;
   });
 
@@ -257,7 +259,7 @@ const calculateCategoryTotals = async (mode = 'month') => {
     const start = expenseData.value.startDate;
     const end = expenseData.value.endDate;
     if (!start || !end || dayjs(end).isBefore(dayjs(start))) {
-      categoryTotals.value = expenseTypes.value.map((type) => ({
+      categoryTotals.value = types.map((type) => ({
         category: type.label,
         total: '0.00',
         color: type.color,
@@ -311,7 +313,7 @@ const calculateCategoryTotals = async (mode = 'month') => {
   }
 
   // 產生表格資料
-  categoryTotals.value = expenseTypes.value.map((type) => ({
+  categoryTotals.value = types.map((type) => ({
     category: type.label,
     total: totals[type.value].toFixed(2),
     color: type.color,
@@ -337,6 +339,7 @@ onMounted(() => {
 
   const chartDom = document.getElementById('pieChart');
   chart.value = echarts.init(chartDom);
-  calculateCategoryTotals();
+  // 不在此處呼叫 calculateCategoryTotals,watcher 的 immediate: true 會在
+  // fetchCustomExpenseTypes 完成後觸發,避免兩個非同步流程競態
 });
 </script>

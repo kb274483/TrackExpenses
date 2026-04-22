@@ -14,7 +14,15 @@
               <q-icon name="account_balance" class="iconStyle" />
               Track expenses
             </div>
-            <div class="tw-flex tw-items-center" v-if="userToken !== null">
+            <div class="tw-flex tw-items-center tw-gap-1" v-if="userToken !== null">
+              <q-btn dense flat round
+                :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'"
+                @click="toggleDark"
+              >
+                <q-tooltip>
+                  {{ $q.dark.isActive ? '切換淺色模式' : '切換深色模式' }}
+                </q-tooltip>
+              </q-btn>
               <div class="tw-w-10 tw-h-10 tw-rounded-md tw-overflow-hidden">
                 <img :src="userData.photoURL" alt="">
               </div>
@@ -125,14 +133,19 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import { onAuthStateChanged, getAuth } from 'firebase/auth';
 import { useRouter } from 'vue-router';
 import {
   db, ref as dbRef, get,
 } from 'src/boot/firebase';
+import { toggleDarkMode } from 'src/boot/darkMode';
 import AlertDialog from 'src/components/AlertDialog.vue';
 
+const $q = useQuasar();
 const $router = useRouter();
+
+const toggleDark = () => toggleDarkMode();
 
 const leftDrawerOpen = ref(false);
 const toggleLeftDrawer = () => {

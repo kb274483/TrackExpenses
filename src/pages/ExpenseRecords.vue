@@ -36,7 +36,16 @@
         <q-item-section>
           <q-item-label>
             <div class="tw-grid tw-grid-cols-2 tw-gap-2">
-              <strong>{{ record.description }}</strong>
+              <strong>
+                {{ record.description }}
+                <q-chip
+                  v-if="record.splitMethod && record.splitMethod !== 'equal'"
+                  dense square size="sm"
+                  color="primary" text-color="white"
+                  :label="getSplitMethodLabel(record.splitMethod)"
+                  class="tw-ml-1"
+                />
+              </strong>
               <span class="tw-truncate">{{ record.payer.label}}</span>
             </div>
           </q-item-label>
@@ -142,6 +151,58 @@
               </q-btn>
             </template>
           </q-select>
+
+          <!-- 分帳方式 -->
+          <div class="tw-mt-4">
+            <div class="tw-text-sm tw-text-gray-600 tw-mb-1">分帳方式</div>
+            <q-option-group
+              v-model="expenseData.splitMethod"
+              :options="splitMethodOptions"
+              type="radio"
+              inline
+              color="primary"
+              @update:model-value="onSplitMethodChange"
+            />
+          </div>
+
+          <!-- 分帳明細：非均分時顯示 -->
+          <div v-if="expenseData.splitMethod && expenseData.splitMethod !== 'equal'"
+            class="tw-mt-3"
+          >
+            <div class="tw-text-xs tw-text-gray-500 tw-mb-2">
+              {{ splitModeHint }}
+            </div>
+            <div v-if="selectedMembersForSplit.length === 0"
+              class="tw-text-sm tw-text-gray-400 tw-italic"
+            >
+              請先選擇參與者
+            </div>
+            <div v-for="member in selectedMembersForSplit" :key="member.value"
+              class="tw-flex tw-items-center tw-gap-2 tw-mb-1"
+            >
+              <span class="tw-flex-1 tw-text-sm tw-text-gray-700 tw-truncate">
+                {{ member.label }}
+              </span>
+              <q-input
+                :model-value="splitValuesMap[member.value]"
+                @update:model-value="(v) => updateSplitValue(member.value, v)"
+                type="tel"
+                inputmode="decimal"
+                dense outlined
+                class="tw-w-24"
+                :suffix="splitValueSuffix"
+              />
+              <span class="tw-w-24 tw-text-right tw-text-xs tw-text-gray-500">
+                ≈ ${{ formatPreview(member.value) }}
+              </span>
+            </div>
+            <div v-if="selectedMembersForSplit.length > 0"
+              class="tw-text-right tw-text-xs tw-mt-2"
+              :class="splitValid ? 'tw-text-green-600' : 'tw-text-red-500'"
+            >
+              {{ splitStatusText }}
+            </div>
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -207,7 +268,19 @@ const expenseData = ref({
   payer: '',
   type: '',
   involvedMembers: [], // 參與成員數組
+  splitMethod: 'equal', // 分帳方式：equal | shares | exact | percentage
 });
+
+// 分帳方式選項
+const splitMethodOptions = [
+  { label: '均分', value: 'equal' },
+  { label: '份數', value: 'shares' },
+  { label: '固定金額', value: 'exact' },
+  { label: '百分比', value: 'percentage' },
+];
+
+// 每位參與者的分帳值（key 為 memberId）
+const splitValuesMap = ref({});
 
 const recordToDelete = ref(null);
 const members = ref([]);
@@ -256,10 +329,15 @@ const openExpenseDialog = (mode, record = null) => {
       payer: user ? { label: user.displayName, value: user.uid } : '',
       type: '',
       involvedMembers: members.value.map((member) => member.value), // 默認選擇所有成員
+      splitMethod: 'equal',
     };
+    splitValuesMap.value = {};
   } else if (mode === 'edit' && record) {
     isEditMode.value = true;
-    expenseData.value = { ...record };
+    expenseData.value = {
+      ...record,
+      splitMethod: record.splitMethod || 'equal', // 舊資料預設均分
+    };
     // 如果編輯的記錄中沒有 involvedMembers 欄位，則創建一個（兼容舊數據）
     if (!expenseData.value.involvedMembers || !Array.isArray(expenseData.value.involvedMembers)) {
       // 從members數組獲取ID，確保處理可能的undefined情況
@@ -269,6 +347,14 @@ const openExpenseDialog = (mode, record = null) => {
 
       expenseData.value.involvedMembers = memberIds;
     }
+    // 回填分帳值
+    const map = {};
+    if (Array.isArray(record.splits)) {
+      record.splits.forEach((s) => {
+        if (s && s.memberId) map[s.memberId] = Number(s.value) || 0;
+      });
+    }
+    splitValuesMap.value = map;
   }
   showExpenseDialog.value = true;
 };
@@ -297,6 +383,190 @@ const selectAllParticipants = () => {
 // 計算是否所有成員都已選中
 const allParticipantsSelected = computed(() => expenseData.value.involvedMembers
     && members.value.length === expenseData.value.involvedMembers.length);
+
+// 目前參與者的物件清單（for 分帳明細渲染）
+const selectedMembersForSplit = computed(() => {
+  const ids = expenseData.value.involvedMembers || [];
+  return (members.value || []).filter((m) => ids.includes(m.value));
+});
+
+// 各模式的單位後綴
+const splitValueSuffix = computed(() => {
+  switch (expenseData.value.splitMethod) {
+    case 'shares': return '份';
+    case 'exact': return '$';
+    case 'percentage': return '%';
+    default: return '';
+  }
+});
+
+// 模式提示文字
+const splitModeHint = computed(() => {
+  switch (expenseData.value.splitMethod) {
+    case 'shares': return '依份數比例分攤（預設每人 1 份）';
+    case 'exact': return '各自指定金額，加總需等於消費總額';
+    case 'percentage': return '各自指定百分比，加總需等於 100%';
+    default: return '';
+  }
+});
+
+// 計算每人實際應付金額（含預覽）
+const computeSplitAmounts = () => {
+  const total = Number(expenseData.value.amount) || 0;
+  const method = expenseData.value.splitMethod || 'equal';
+  const ids = expenseData.value.involvedMembers || [];
+  const values = splitValuesMap.value;
+  const result = {};
+
+  if (ids.length === 0) return result;
+
+  if (method === 'equal') {
+    const per = total / ids.length;
+    ids.forEach((id) => { result[id] = per; });
+    return result;
+  }
+
+  if (method === 'shares') {
+    const totalShares = ids.reduce((acc, id) => acc + (Number(values[id]) || 0), 0);
+    if (totalShares === 0) {
+      ids.forEach((id) => { result[id] = 0; });
+    } else {
+      ids.forEach((id) => {
+        result[id] = (total * (Number(values[id]) || 0)) / totalShares;
+      });
+    }
+    return result;
+  }
+
+  if (method === 'exact') {
+    ids.forEach((id) => { result[id] = Number(values[id]) || 0; });
+    return result;
+  }
+
+  if (method === 'percentage') {
+    ids.forEach((id) => {
+      result[id] = (total * (Number(values[id]) || 0)) / 100;
+    });
+    return result;
+  }
+
+  return result;
+};
+
+// 預覽金額顯示（四捨五入 + 千分位）
+const formatPreview = (memberId) => {
+  const amounts = computeSplitAmounts();
+  const val = Math.round(amounts[memberId] || 0);
+  return val.toLocaleString('zh-TW');
+};
+
+// 分帳狀態文字（顯示加總結果）
+const splitStatusText = computed(() => {
+  const method = expenseData.value.splitMethod;
+  const total = Number(expenseData.value.amount) || 0;
+  const ids = expenseData.value.involvedMembers || [];
+  const values = splitValuesMap.value;
+  const sum = ids.reduce((acc, id) => acc + (Number(values[id]) || 0), 0);
+
+  if (method === 'exact') {
+    const diff = total - sum;
+    const base = `已分配 $${sum.toLocaleString('zh-TW')} / 總額 $${total.toLocaleString('zh-TW')}`;
+    if (diff === 0) return `${base} ✓`;
+    return `${base}（${diff > 0 ? '尚差' : '超過'} $${Math.abs(diff).toLocaleString('zh-TW')}）`;
+  }
+
+  if (method === 'percentage') {
+    const diff = 100 - sum;
+    if (Math.abs(diff) < 0.01) return `已分配 ${sum.toFixed(1)}% ✓`;
+    return `已分配 ${sum.toFixed(1)}%（${diff > 0 ? '尚差' : '超過'} ${Math.abs(diff).toFixed(1)}%）`;
+  }
+
+  if (method === 'shares') {
+    return `總份數：${sum} 份`;
+  }
+
+  return '';
+});
+
+// 分帳是否合法（總和是否對齊）
+const splitValid = computed(() => {
+  const method = expenseData.value.splitMethod;
+  const total = Number(expenseData.value.amount) || 0;
+  const ids = expenseData.value.involvedMembers || [];
+  const values = splitValuesMap.value;
+  const sum = ids.reduce((acc, id) => acc + (Number(values[id]) || 0), 0);
+
+  if (method === 'equal') return true;
+  if (method === 'shares') return sum > 0;
+  if (method === 'exact') return sum === total;
+  if (method === 'percentage') return Math.abs(100 - sum) < 0.01;
+  return true;
+});
+
+// 更新某位成員的分帳值
+const updateSplitValue = (memberId, val) => {
+  const n = val === '' || val === null ? 0 : Number(val);
+  splitValuesMap.value = {
+    ...splitValuesMap.value,
+    [memberId]: Number.isFinite(n) ? n : 0,
+  };
+};
+
+// 切換分帳方式時，用現有金額 / 人數預填合理預設值
+const onSplitMethodChange = (method) => {
+  const ids = expenseData.value.involvedMembers || [];
+  const total = Number(expenseData.value.amount) || 0;
+  const newMap = {};
+
+  if (method === 'shares') {
+    ids.forEach((id) => { newMap[id] = 1; });
+  } else if (method === 'exact' && ids.length > 0) {
+    const per = Math.floor(total / ids.length);
+    ids.forEach((id, i) => {
+      // 最後一人吃尾差，確保加總等於總額
+      newMap[id] = i === ids.length - 1 ? total - per * (ids.length - 1) : per;
+    });
+  } else if (method === 'percentage' && ids.length > 0) {
+    const per = Math.floor((100 / ids.length) * 10) / 10;
+    ids.forEach((id, i) => {
+      newMap[id] = i === ids.length - 1
+        ? Number((100 - per * (ids.length - 1)).toFixed(1))
+        : per;
+    });
+  }
+
+  splitValuesMap.value = newMap;
+};
+
+// 參與者增減時，同步 splitValuesMap 的 key
+watch(
+  () => expenseData.value.involvedMembers,
+  (newIds) => {
+    const method = expenseData.value.splitMethod;
+    if (!method || method === 'equal') return;
+    const ids = newIds || [];
+    const newMap = { ...splitValuesMap.value };
+
+    Object.keys(newMap).forEach((key) => {
+      if (!ids.includes(key)) delete newMap[key];
+    });
+
+    ids.forEach((id) => {
+      if (!(id in newMap)) {
+        if (method === 'shares') newMap[id] = 1;
+        else newMap[id] = 0;
+      }
+    });
+
+    splitValuesMap.value = newMap;
+  },
+);
+
+// 分帳方式的顯示 label（for 列表 badge）
+const getSplitMethodLabel = (method) => {
+  const map = { shares: '份數', exact: '指定金額', percentage: '百分比' };
+  return map[method] || '';
+};
 
 const fetchMembers = async () => {
   const groupRef = dbRef(db, `/groups/${watchGroupName.value}/members`);
@@ -393,11 +663,22 @@ const saveExpense = async () => {
   const involvedMembersObjects = members.value
     .filter((member) => expenseData.value.involvedMembers.includes(member.value));
 
+  // 組 splits 陣列（均分模式不需要）
+  const method = expenseData.value.splitMethod || 'equal';
+  const splits = method === 'equal'
+    ? null
+    : expenseData.value.involvedMembers.map((id) => ({
+      memberId: id,
+      value: Number(splitValuesMap.value[id]) || 0,
+    }));
+
   const record = {
     ...expenseData.value,
     id: recordId,
     members: involvedMembersObjects, // 使用選定的參與者而不是所有成員
     involvedMembers: expenseData.value.involvedMembers, // 保存參與者ID列表，方便編輯時使用
+    splitMethod: method,
+    splits, // null 時 Firebase RTDB 會清除欄位（編輯時從非均分改回均分的情境）
   };
 
   await set(dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}/${recordId}`), record);

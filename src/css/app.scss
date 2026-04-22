@@ -1,1 +1,24 @@
 // app global css in SCSS form
+
+// Dark mode overrides for Tailwind utility classes
+// Quasar 的 body.body--dark 會在啟用深色模式時加到 <body>
+// 這裡針對專案大量使用的灰階 / 白底樣式做反轉
+body.body--dark {
+  .tw-text-gray-400 { color: rgb(107 114 128) !important; }
+  .tw-text-gray-500 { color: rgb(156 163 175) !important; }
+  .tw-text-gray-600,
+  .tw-text-gray-700 { color: rgb(209 213 219) !important; }
+
+  .tw-bg-white { background-color: rgb(31 41 55) !important; }
+  .tw-bg-gray-50 { background-color: rgb(55 65 81) !important; }
+  .tw-bg-gray-100 { background-color: rgb(55 65 81) !important; }
+
+  .tw-border-gray-200 { border-color: rgb(75 85 99) !important; }
+  .tw-border-gray-300 { border-color: rgb(75 85 99) !important; }
+
+  // q-btn 用 text-color="white" + color="white"（白底）的情況下，
+  // dark mode 要改成深色底 + 淺色字，避免白底白字看不到
+  .q-btn[class*="bg-white"] {
+    background-color: rgb(55 65 81) !important;
+  }
+}

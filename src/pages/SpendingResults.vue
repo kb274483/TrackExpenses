@@ -144,6 +144,49 @@ const getMemberName = (memberId) => {
   return member ? member.label : 'Unknown';
 };
 
+// 根據 splitMethod 計算每位參與者應分擔的金額
+// 舊資料沒有 splitMethod / splits → 自動走均分（向下相容）
+const computeShares = (totalAmount, involvedMembers, expense) => {
+  const result = {};
+  const ids = (involvedMembers || []).map((m) => m.value).filter(Boolean);
+  if (ids.length === 0) return result;
+
+  const method = (expense && expense.splitMethod) || 'equal';
+  const splits = Array.isArray(expense && expense.splits) ? expense.splits : [];
+  const splitMap = {};
+  splits.forEach((s) => {
+    if (s && s.memberId) splitMap[s.memberId] = Number(s.value) || 0;
+  });
+
+  if (method === 'shares') {
+    const totalShares = ids.reduce((acc, id) => acc + (splitMap[id] || 0), 0);
+    if (totalShares > 0) {
+      ids.forEach((id) => {
+        result[id] = (totalAmount * (splitMap[id] || 0)) / totalShares;
+      });
+      return result;
+    }
+    // shares 全為 0 → 退回均分
+  }
+
+  if (method === 'exact') {
+    ids.forEach((id) => { result[id] = splitMap[id] || 0; });
+    return result;
+  }
+
+  if (method === 'percentage') {
+    ids.forEach((id) => {
+      result[id] = (totalAmount * (splitMap[id] || 0)) / 100;
+    });
+    return result;
+  }
+
+  // equal（或 fallback）
+  const per = totalAmount / ids.length;
+  ids.forEach((id) => { result[id] = per; });
+  return result;
+};
+
 // 生成結算列表
 const generateSettlementList = (debtMap) => {
   const positiveDebt = []; // 應收款
@@ -229,7 +272,6 @@ const calculateSettlements = async () => {
       const totalAmount = parseFloat(expense.amount); // 總金額
       const payerId = expense.payer.value; // 付款人ID
       const involvedMembers = expense.members; // 涉及的成員
-      const perPersonAmount = totalAmount / involvedMembers.length; // 每個成員應付的金額
 
       if (debtMap[payerId] === undefined) {
         debtMap[payerId] = 0;
@@ -238,13 +280,15 @@ const calculateSettlements = async () => {
       debtMap[payerId] += totalAmount; // 累加付款人的應付金額
       memberExpenses[payerId] += totalAmount; // 累加付款人的花費金額
 
-      // 每個成員（包含付款人）應分擔的金額
+      // 依 splitMethod 計算每位參與者的應分擔金額
+      const shares = computeShares(totalAmount, involvedMembers, expense);
+
       involvedMembers.forEach((member) => {
         if (debtMap[member.value] === undefined) {
           debtMap[member.value] = 0;
           memberExpenses[member.value] = memberExpenses[member.value] || 0;
         }
-        debtMap[member.value] -= perPersonAmount; // 每個成員減去應付的分擔金額
+        debtMap[member.value] -= shares[member.value] || 0;
       });
     });
 
