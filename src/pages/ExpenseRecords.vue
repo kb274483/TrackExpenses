@@ -67,150 +67,14 @@
       </q-item>
     </q-list>
 
-    <!-- 新增與編輯消費記錄對話框 -->
-    <q-dialog persistent v-model="showExpenseDialog">
-      <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
-        <q-card-section>
-          <div class="text-h6">{{ isEditMode ? 'Edit' : 'Add' }} Expense</div>
-          <q-input
-            v-model="expenseData.description"
-            label="Description"
-            :error="!expenseData.description && isSubmitted"
-            error-message="Description is required"
-          />
-          <q-input
-            v-model="expenseData.amount"
-            label="Amount"
-            type="tel"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            :error="!expenseData.amount && isSubmitted"
-            error-message="Amount is required"
-            @focus="clearZero"
-            @blur="expenseData.amount = expenseData.amount || 0"
-            @update:model-value="removeInvalid"
-          />
-          <q-select
-            v-model="expenseData.payer"
-            :options="members"
-            label="Select Payer"
-            option-value="value"
-            option-label="label"
-            :error="!expenseData.payer && isSubmitted"
-            error-message="Payer is required"
-          />
-          <q-select
-            v-model="expenseData.type"
-            :options="expenseTypes"
-            label="Expense Type"
-            :error="!expenseData.type && isSubmitted"
-            error-message="Type is required"
-          />
-          <q-input
-            v-model="expenseData.date"
-            label="Date"
-            type="date"
-            :error="!expenseData.date && isSubmitted"
-            error-message="Date is required"
-          />
-          <!-- 消費參與者選擇器 -->
-          <q-select
-            v-model="expenseData.involvedMembers"
-            :options="members"
-            label="Participants"
-            multiple
-            option-value="value"
-            option-label="label"
-            emit-value
-            map-options
-            :error="!expenseData.involvedMembers ||
-                   expenseData.involvedMembers.length === 0 && isSubmitted"
-            error-message="至少需要一名參與者"
-          >
-            <template v-slot:selected>
-              <q-chip
-                v-for="member in getSelectedMembers(expenseData.involvedMembers)"
-                :key="member.value"
-                removable
-                dense
-                @remove="removeParticipant(member.value)"
-                class="q-mr-xs"
-              >
-                {{ member.label }}
-              </q-chip>
-              <q-btn
-                v-if="!allParticipantsSelected"
-                flat
-                dense
-                size="sm"
-                icon="add"
-                @click="selectAllParticipants"
-                class="q-ml-xs"
-              >
-                <q-tooltip>Select All</q-tooltip>
-              </q-btn>
-            </template>
-          </q-select>
-
-          <!-- 分帳方式 -->
-          <div class="tw-mt-4">
-            <div class="tw-text-sm tw-text-gray-600 tw-mb-1">分帳方式</div>
-            <q-option-group
-              v-model="expenseData.splitMethod"
-              :options="splitMethodOptions"
-              type="radio"
-              inline
-              color="primary"
-              @update:model-value="onSplitMethodChange"
-            />
-          </div>
-
-          <!-- 分帳明細：非均分時顯示 -->
-          <div v-if="expenseData.splitMethod && expenseData.splitMethod !== 'equal'"
-            class="tw-mt-3"
-          >
-            <div class="tw-text-xs tw-text-gray-500 tw-mb-2">
-              {{ splitModeHint }}
-            </div>
-            <div v-if="selectedMembersForSplit.length === 0"
-              class="tw-text-sm tw-text-gray-400 tw-italic"
-            >
-              請先選擇參與者
-            </div>
-            <div v-for="member in selectedMembersForSplit" :key="member.value"
-              class="tw-flex tw-items-center tw-gap-2 tw-mb-1"
-            >
-              <span class="tw-flex-1 tw-text-sm tw-text-gray-700 tw-truncate">
-                {{ member.label }}
-              </span>
-              <q-input
-                :model-value="splitValuesMap[member.value]"
-                @update:model-value="(v) => updateSplitValue(member.value, v)"
-                type="tel"
-                inputmode="decimal"
-                dense outlined
-                class="tw-w-24"
-                :suffix="splitValueSuffix"
-              />
-              <span class="tw-w-24 tw-text-right tw-text-xs tw-text-gray-500">
-                ≈ ${{ formatPreview(member.value) }}
-              </span>
-            </div>
-            <div v-if="selectedMembersForSplit.length > 0"
-              class="tw-text-right tw-text-xs tw-mt-2"
-              :class="splitValid ? 'tw-text-green-600' : 'tw-text-red-500'"
-            >
-              {{ splitStatusText }}
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="negative" @click="showExpenseDialog = false" />
-          <q-btn flat label="Save" color="primary" @click="saveExpense" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <ExpenseFormDialog
+      v-model="showExpenseDialog"
+      :is-edit-mode="isEditMode"
+      :initial-expense-data="expenseData"
+      :members="members"
+      :expense-types="expenseTypes"
+      @save="saveExpense"
+    />
 
     <!-- 確認刪除對話框 -->
     <q-dialog persistent v-model="showDeleteConfirmDialog">
@@ -233,7 +97,7 @@
 
 <script setup>
 import {
-  ref, onMounted, onUnmounted, watch, computed,
+  ref, onMounted, onUnmounted, watch,
 } from 'vue';
 import {
   db, ref as dbRef, get, set, remove, onValue,
@@ -242,6 +106,7 @@ import dayjs from 'dayjs';
 import { useRoute } from 'vue-router';
 import { getAuth } from 'firebase/auth';
 import { generateMonths } from 'src/utils/generateDate';
+import ExpenseFormDialog from 'src/components/expense/ExpenseFormDialog.vue';
 
 // 儲存DB監聽器
 let dbValueWatch = null;
@@ -259,8 +124,6 @@ const user = auth.currentUser;
 const showExpenseDialog = ref(false);
 const showDeleteConfirmDialog = ref(false);
 const isEditMode = ref(false);
-const isSubmitted = ref(false);
-
 const expenseData = ref({
   description: '',
   amount: 0,
@@ -270,17 +133,6 @@ const expenseData = ref({
   involvedMembers: [], // 參與成員數組
   splitMethod: 'equal', // 分帳方式：equal | shares | exact | percentage
 });
-
-// 分帳方式選項
-const splitMethodOptions = [
-  { label: '均分', value: 'equal' },
-  { label: '份數', value: 'shares' },
-  { label: '固定金額', value: 'exact' },
-  { label: '百分比', value: 'percentage' },
-];
-
-// 每位參與者的分帳值（key 為 memberId）
-const splitValuesMap = ref({});
 
 const recordToDelete = ref(null);
 const members = ref([]);
@@ -306,20 +158,8 @@ const months = ref([]);
 const observer = ref(null);
 const recordRefs = ref([]);
 
-// 消費金額只能輸入數字，並在focus時刪除0，並在blur時補0
-const clearZero = () => {
-  if (expenseData.value.amount === 0) {
-    expenseData.value.amount = '';
-  }
-};
-// 過濾掉非數字的字符
-const removeInvalid = () => {
-  expenseData.value.amount = expenseData.value.amount.replace(/[^0-9]/g, '');
-};
-
 // 開啟對話框
 const openExpenseDialog = (mode, record = null) => {
-  isSubmitted.value = false;
   if (mode === 'add') {
     isEditMode.value = false;
     expenseData.value = {
@@ -331,7 +171,6 @@ const openExpenseDialog = (mode, record = null) => {
       involvedMembers: members.value.map((member) => member.value), // 默認選擇所有成員
       splitMethod: 'equal',
     };
-    splitValuesMap.value = {};
   } else if (mode === 'edit' && record) {
     isEditMode.value = true;
     expenseData.value = {
@@ -347,220 +186,9 @@ const openExpenseDialog = (mode, record = null) => {
 
       expenseData.value.involvedMembers = memberIds;
     }
-    // 回填分帳值
-    const map = {};
-    if (Array.isArray(record.splits)) {
-      record.splits.forEach((s) => {
-        if (s && s.memberId) map[s.memberId] = Number(s.value) || 0;
-      });
-    }
-    splitValuesMap.value = map;
   }
   showExpenseDialog.value = true;
 };
-
-// 獲取選定的成員對象
-const getSelectedMembers = (selectedIds) => {
-  if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0) return [];
-  // 確保members.value存在且是 Array
-  if (!members.value || !Array.isArray(members.value)) return [];
-
-  return members.value.filter((member) => member && member.value
-    && selectedIds.includes(member.value));
-};
-
-// 從參與者中移除成員
-const removeParticipant = (memberId) => {
-  expenseData.value.involvedMembers = expenseData.value.involvedMembers
-    .filter((id) => id !== memberId);
-};
-
-// 選擇所有參與者
-const selectAllParticipants = () => {
-  expenseData.value.involvedMembers = members.value.map((member) => member.value);
-};
-
-// 計算是否所有成員都已選中
-const allParticipantsSelected = computed(() => expenseData.value.involvedMembers
-    && members.value.length === expenseData.value.involvedMembers.length);
-
-// 目前參與者的物件清單（for 分帳明細渲染）
-const selectedMembersForSplit = computed(() => {
-  const ids = expenseData.value.involvedMembers || [];
-  return (members.value || []).filter((m) => ids.includes(m.value));
-});
-
-// 各模式的單位後綴
-const splitValueSuffix = computed(() => {
-  switch (expenseData.value.splitMethod) {
-    case 'shares': return '份';
-    case 'exact': return '$';
-    case 'percentage': return '%';
-    default: return '';
-  }
-});
-
-// 模式提示文字
-const splitModeHint = computed(() => {
-  switch (expenseData.value.splitMethod) {
-    case 'shares': return '依份數比例分攤（預設每人 1 份）';
-    case 'exact': return '各自指定金額，加總需等於消費總額';
-    case 'percentage': return '各自指定百分比，加總需等於 100%';
-    default: return '';
-  }
-});
-
-// 計算每人實際應付金額（含預覽）
-const computeSplitAmounts = () => {
-  const total = Number(expenseData.value.amount) || 0;
-  const method = expenseData.value.splitMethod || 'equal';
-  const ids = expenseData.value.involvedMembers || [];
-  const values = splitValuesMap.value;
-  const result = {};
-
-  if (ids.length === 0) return result;
-
-  if (method === 'equal') {
-    const per = total / ids.length;
-    ids.forEach((id) => { result[id] = per; });
-    return result;
-  }
-
-  if (method === 'shares') {
-    const totalShares = ids.reduce((acc, id) => acc + (Number(values[id]) || 0), 0);
-    if (totalShares === 0) {
-      ids.forEach((id) => { result[id] = 0; });
-    } else {
-      ids.forEach((id) => {
-        result[id] = (total * (Number(values[id]) || 0)) / totalShares;
-      });
-    }
-    return result;
-  }
-
-  if (method === 'exact') {
-    ids.forEach((id) => { result[id] = Number(values[id]) || 0; });
-    return result;
-  }
-
-  if (method === 'percentage') {
-    ids.forEach((id) => {
-      result[id] = (total * (Number(values[id]) || 0)) / 100;
-    });
-    return result;
-  }
-
-  return result;
-};
-
-// 預覽金額顯示（四捨五入 + 千分位）
-const formatPreview = (memberId) => {
-  const amounts = computeSplitAmounts();
-  const val = Math.round(amounts[memberId] || 0);
-  return val.toLocaleString('zh-TW');
-};
-
-// 分帳狀態文字（顯示加總結果）
-const splitStatusText = computed(() => {
-  const method = expenseData.value.splitMethod;
-  const total = Number(expenseData.value.amount) || 0;
-  const ids = expenseData.value.involvedMembers || [];
-  const values = splitValuesMap.value;
-  const sum = ids.reduce((acc, id) => acc + (Number(values[id]) || 0), 0);
-
-  if (method === 'exact') {
-    const diff = total - sum;
-    const base = `已分配 $${sum.toLocaleString('zh-TW')} / 總額 $${total.toLocaleString('zh-TW')}`;
-    if (diff === 0) return `${base} ✓`;
-    return `${base}（${diff > 0 ? '尚差' : '超過'} $${Math.abs(diff).toLocaleString('zh-TW')}）`;
-  }
-
-  if (method === 'percentage') {
-    const diff = 100 - sum;
-    if (Math.abs(diff) < 0.01) return `已分配 ${sum.toFixed(1)}% ✓`;
-    return `已分配 ${sum.toFixed(1)}%（${diff > 0 ? '尚差' : '超過'} ${Math.abs(diff).toFixed(1)}%）`;
-  }
-
-  if (method === 'shares') {
-    return `總份數：${sum} 份`;
-  }
-
-  return '';
-});
-
-// 分帳是否合法（總和是否對齊）
-const splitValid = computed(() => {
-  const method = expenseData.value.splitMethod;
-  const total = Number(expenseData.value.amount) || 0;
-  const ids = expenseData.value.involvedMembers || [];
-  const values = splitValuesMap.value;
-  const sum = ids.reduce((acc, id) => acc + (Number(values[id]) || 0), 0);
-
-  if (method === 'equal') return true;
-  if (method === 'shares') return sum > 0;
-  if (method === 'exact') return sum === total;
-  if (method === 'percentage') return Math.abs(100 - sum) < 0.01;
-  return true;
-});
-
-// 更新某位成員的分帳值
-const updateSplitValue = (memberId, val) => {
-  const n = val === '' || val === null ? 0 : Number(val);
-  splitValuesMap.value = {
-    ...splitValuesMap.value,
-    [memberId]: Number.isFinite(n) ? n : 0,
-  };
-};
-
-// 切換分帳方式時，用現有金額 / 人數預填合理預設值
-const onSplitMethodChange = (method) => {
-  const ids = expenseData.value.involvedMembers || [];
-  const total = Number(expenseData.value.amount) || 0;
-  const newMap = {};
-
-  if (method === 'shares') {
-    ids.forEach((id) => { newMap[id] = 1; });
-  } else if (method === 'exact' && ids.length > 0) {
-    const per = Math.floor(total / ids.length);
-    ids.forEach((id, i) => {
-      // 最後一人吃尾差，確保加總等於總額
-      newMap[id] = i === ids.length - 1 ? total - per * (ids.length - 1) : per;
-    });
-  } else if (method === 'percentage' && ids.length > 0) {
-    const per = Math.floor((100 / ids.length) * 10) / 10;
-    ids.forEach((id, i) => {
-      newMap[id] = i === ids.length - 1
-        ? Number((100 - per * (ids.length - 1)).toFixed(1))
-        : per;
-    });
-  }
-
-  splitValuesMap.value = newMap;
-};
-
-// 參與者增減時，同步 splitValuesMap 的 key
-watch(
-  () => expenseData.value.involvedMembers,
-  (newIds) => {
-    const method = expenseData.value.splitMethod;
-    if (!method || method === 'equal') return;
-    const ids = newIds || [];
-    const newMap = { ...splitValuesMap.value };
-
-    Object.keys(newMap).forEach((key) => {
-      if (!ids.includes(key)) delete newMap[key];
-    });
-
-    ids.forEach((id) => {
-      if (!(id in newMap)) {
-        if (method === 'shares') newMap[id] = 1;
-        else newMap[id] = 0;
-      }
-    });
-
-    splitValuesMap.value = newMap;
-  },
-);
 
 // 分帳方式的顯示 label（for 列表 badge）
 const getSplitMethodLabel = (method) => {
@@ -647,38 +275,19 @@ const deleteExpenseConfirmed = async () => {
 };
 
 // 保存消費記錄
-const saveExpense = async () => {
-  isSubmitted.value = true;
-
-  if (!expenseData.value.description || !expenseData.value.amount
-    || !expenseData.value.payer || !expenseData.value.type || !expenseData.value.date
-    || !expenseData.value.involvedMembers || expenseData.value.involvedMembers.length === 0) {
-    return;
-  }
-
-  const month = expenseData.value.date.slice(0, 7);
-  const recordId = expenseData.value.id || Date.now().toString();
+const saveExpense = async (formExpenseData) => {
+  const month = formExpenseData.date.slice(0, 7);
+  const recordId = formExpenseData.id || Date.now().toString();
 
   // 根據 involvedMembers 創建參與成員數組
   const involvedMembersObjects = members.value
-    .filter((member) => expenseData.value.involvedMembers.includes(member.value));
-
-  // 組 splits 陣列（均分模式不需要）
-  const method = expenseData.value.splitMethod || 'equal';
-  const splits = method === 'equal'
-    ? null
-    : expenseData.value.involvedMembers.map((id) => ({
-      memberId: id,
-      value: Number(splitValuesMap.value[id]) || 0,
-    }));
+    .filter((member) => formExpenseData.involvedMembers.includes(member.value));
 
   const record = {
-    ...expenseData.value,
+    ...formExpenseData,
     id: recordId,
     members: involvedMembersObjects, // 使用選定的參與者而不是所有成員
-    involvedMembers: expenseData.value.involvedMembers, // 保存參與者ID列表，方便編輯時使用
-    splitMethod: method,
-    splits, // null 時 Firebase RTDB 會清除欄位（編輯時從非均分改回均分的情境）
+    involvedMembers: formExpenseData.involvedMembers, // 保存參與者ID列表，方便編輯時使用
   };
 
   await set(dbRef(db, `/groups/${watchGroupName.value}/expenses/${month}/${recordId}`), record);
@@ -749,7 +358,8 @@ onUnmounted(() => {
 
 // 根據消費類型獲取圖示
 const getIconForType = (type) => {
-  const typeInfo = expenseTypes.value.find((t) => t.value === type.value);
+  const typeValue = typeof type === 'string' ? type : type?.value;
+  const typeInfo = expenseTypes.value.find((t) => t.value === typeValue);
   return typeInfo ? typeInfo.icon : 'more_horiz';
 };
 

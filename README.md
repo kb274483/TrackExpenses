@@ -65,5 +65,22 @@ npm run lint
 quasar build
 ```
 
+### Receipt scan setup
+前端預設仍使用 mock 掃描結果。若要切到真實 Firebase Function：
+
+1. 在前端 `.env` 設定：
+```bash
+VITE_USE_MOCK_RECEIPT_SCAN=false
+```
+
+2. 在 Firebase Functions 環境設定：
+```bash
+RECEIPT_SCAN_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_RECEIPT_SCAN_MODEL=gpt-4.1-mini
+```
+
+`OPENAI_RECEIPT_SCAN_MODEL` 可省略，預設會用 `gpt-4.1-mini`。
+
 ### Customize the configuration
 See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).

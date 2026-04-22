@@ -33,7 +33,7 @@ const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
 export {
-  auth, db, provider, signInWithPopup, ref,
+  app, auth, db, provider, signInWithPopup, ref,
   set, get, update, onValue, child, remove,
   push,
 };
