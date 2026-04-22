@@ -346,7 +346,7 @@ const submitExpense = () => {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
-      <q-card-section class="tw-space-y-4">
+      <q-card-section class="tw-space-y-1">
         <div class="tw-flex tw-items-center tw-justify-between tw-gap-3">
           <div class="text-h6">{{ isEditMode ? 'Edit' : 'Add' }} Expense</div>
           <ReceiptScanPanel @scanned="applyScannedResult" />
