@@ -24,8 +24,11 @@ const emit = defineEmits(['scanned']);
 const qrScannerInstance = ref(null);
 const scannerModule = ref(null);
 const videoRef = ref(null);
-const leftFileInputRef = ref(null);
-const rightFileInputRef = ref(null);
+const fileInputRef = ref(null);
+
+let nativeDetector = null;
+let mediaStream = null;
+let detectionFrameId = null;
 
 const leftRawText = ref('');
 const rightRawText = ref('');
@@ -48,7 +51,7 @@ const rightChipClass = computed(() => (rightData.value ? CHIP_DONE_CLASS : CHIP_
 const stageLabel = computed(() => ({
   idle: '尚未開始',
   'scanning-left': '掃描左側 QR 中',
-  'captured-left': '左側 QR 已捕獲',
+  'captured-left': '左側 QR 已捕獲，請繼續掃描右側',
   'scanning-right': '掃描右側 QR 中',
   'captured-both': '左右 QR 已捕獲',
 }[scanStage.value] || '尚未開始'));
@@ -64,10 +67,35 @@ const safeVibrate = () => {
   }
 };
 
+const createNativeDetector = () => {
+  if (typeof window === 'undefined' || !('BarcodeDetector' in window)) return null;
+  try {
+    return new window.BarcodeDetector({ formats: ['qr_code'] });
+  } catch (_) {
+    return null;
+  }
+};
+
+const stopMediaStream = () => {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach((track) => track.stop());
+    mediaStream = null;
+  }
+  if (videoRef.value) {
+    try { videoRef.value.srcObject = null; } catch (_) { /* noop */ }
+  }
+};
+
 const resetScannerInstance = () => {
+  if (detectionFrameId) {
+    cancelAnimationFrame(detectionFrameId);
+    detectionFrameId = null;
+  }
+  stopMediaStream();
   qrScannerInstance.value?.stop();
   qrScannerInstance.value?.destroy();
   qrScannerInstance.value = null;
+  nativeDetector = null;
   isCameraActive.value = false;
 };
 
@@ -82,50 +110,87 @@ const resetAll = () => {
   scanWarning.value = '';
 };
 
-const handleDecodedText = (text) => {
-  scanError.value = '';
-
-  if (!leftData.value) {
-    try {
-      const decoded = decodeLeftQr(text);
-      leftData.value = decoded;
-      leftRawText.value = text;
-      scanStage.value = rightData.value ? 'captured-both' : 'captured-left';
-      safeVibrate();
-      resetScannerInstance();
-      if (rightData.value) nextTick(emitScannedResult);
-      return;
-    } catch (error) {
-      scanStage.value = 'scanning-left';
-      scanError.value = '這不是統一發票左側 QR';
-      return;
-    }
-  }
-
-  try {
-    const decoded = decodeRightQr(text);
-    rightData.value = decoded;
-    rightRawText.value = text;
+const updateStageAfterDetection = () => {
+  if (leftData.value && rightData.value) {
     scanStage.value = 'captured-both';
-    safeVibrate();
-    resetScannerInstance();
-
-    if (leftData.value.rightItemCount && leftData.value.rightItemCount !== decoded.items.length) {
-      scanWarning.value = `右側 QR 品項數 ${decoded.items.length} 筆，與左側宣告 ${leftData.value.rightItemCount} 筆不一致。`;
+    if (leftData.value.rightItemCount
+        && leftData.value.rightItemCount !== rightData.value.items.length) {
+      scanWarning.value = `右側 QR 品項數 ${rightData.value.items.length} 筆，`
+        + `與左側宣告 ${leftData.value.rightItemCount} 筆不一致。`;
     } else {
       scanWarning.value = '';
     }
-
+    resetScannerInstance();
     nextTick(emitScannedResult);
-  } catch (error) {
-    scanStage.value = 'scanning-right';
-    scanError.value = '這不是統一發票右側 QR';
+    return;
+  }
+
+  if (leftData.value) {
+    scanStage.value = 'captured-left';
+  } else if (isCameraActive.value) {
+    scanStage.value = 'scanning-left';
+  }
+};
+
+const tryDecodeText = (text) => {
+  if (!leftData.value) {
+    try {
+      leftData.value = decodeLeftQr(text);
+      leftRawText.value = text;
+      safeVibrate();
+      return true;
+    } catch (_) { /* not a left QR — try right */ }
+  }
+
+  if (!rightData.value) {
+    try {
+      rightData.value = decodeRightQr(text);
+      rightRawText.value = text;
+      safeVibrate();
+      return true;
+    } catch (_) { /* not a right QR either */ }
+  }
+
+  return false;
+};
+
+const processDecodedTexts = (texts) => {
+  if (!texts || !texts.length) return false;
+
+  const hadNew = (texts || []).reduce((acc, rawText) => {
+    if (leftData.value && rightData.value) return acc;
+    const text = String(rawText || '').trim();
+    if (!text) return acc;
+    return tryDecodeText(text) || acc;
+  }, false);
+
+  if (hadNew) {
+    scanError.value = '';
+    updateStageAfterDetection();
+  }
+
+  return hadNew;
+};
+
+const runNativeDetectionLoop = async () => {
+  if (!isCameraActive.value || !nativeDetector || !videoRef.value) return;
+
+  try {
+    const codes = await nativeDetector.detect(videoRef.value);
+    if (codes && codes.length) {
+      processDecodedTexts(codes.map((code) => code.rawValue).filter(Boolean));
+    }
+  } catch (_) {
+    // per-frame detection errors are safe to ignore
+  }
+
+  if (isCameraActive.value) {
+    detectionFrameId = requestAnimationFrame(runNativeDetectionLoop);
   }
 };
 
 const loadQrScannerModule = async () => {
   if (scannerModule.value) return scannerModule.value;
-
   const module = await import('qr-scanner');
   scannerModule.value = module.default;
   return scannerModule.value;
@@ -137,22 +202,36 @@ const startCameraScan = async () => {
   isStartingCamera.value = true;
 
   try {
-    const QrScanner = await loadQrScannerModule();
     const videoElement = videoRef.value;
-
-    if (!videoElement) {
-      throw new Error('Camera preview is unavailable.');
-    }
+    if (!videoElement) throw new Error('Camera preview is unavailable.');
 
     resetScannerInstance();
 
+    const detector = createNativeDetector();
+
+    if (detector && navigator.mediaDevices?.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      mediaStream = stream;
+      videoElement.srcObject = stream;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
+      await videoElement.play();
+      nativeDetector = detector;
+      isCameraActive.value = true;
+      scanStage.value = leftData.value ? 'scanning-right' : 'scanning-left';
+      detectionFrameId = requestAnimationFrame(runNativeDetectionLoop);
+      return;
+    }
+
+    const QrScanner = await loadQrScannerModule();
     qrScannerInstance.value = new QrScanner(
       videoElement,
       (result) => {
         const data = typeof result === 'string' ? result : result?.data;
-        if (data) {
-          handleDecodedText(data);
-        }
+        if (data) processDecodedTexts([data]);
       },
       {
         preferredCamera: 'environment',
@@ -163,7 +242,7 @@ const startCameraScan = async () => {
     await qrScannerInstance.value.start();
     isCameraActive.value = true;
     scanStage.value = leftData.value ? 'scanning-right' : 'scanning-left';
-  } catch (error) {
+  } catch (_) {
     scanError.value = '無法啟用相機，請改用圖片上傳解碼。';
     resetScannerInstance();
   } finally {
@@ -172,17 +251,29 @@ const startCameraScan = async () => {
 };
 
 const triggerFilePicker = () => {
-  if (leftData.value) {
-    rightFileInputRef.value?.click();
-    scanStage.value = 'scanning-right';
-    return;
-  }
-
-  leftFileInputRef.value?.click();
-  scanStage.value = 'scanning-left';
+  fileInputRef.value?.click();
 };
 
-const handleFileDecode = async (event, side) => {
+const detectTextsFromFile = async (file) => {
+  const detector = createNativeDetector();
+
+  if (detector && typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const codes = await detector.detect(bitmap);
+      const texts = (codes || []).map((code) => code.rawValue).filter(Boolean);
+      if (bitmap.close) bitmap.close();
+      if (texts.length) return texts;
+    } catch (_) { /* fall through to qr-scanner */ }
+  }
+
+  const QrScanner = await loadQrScannerModule();
+  const result = await QrScanner.scanImage(file, { returnDetailedScanResult: true });
+  const text = typeof result === 'string' ? result : result?.data;
+  return text ? [text] : [];
+};
+
+const handleFileDecode = async (event) => {
   const [file] = event.target.files || [];
   event.target.value = '';
 
@@ -191,31 +282,14 @@ const handleFileDecode = async (event, side) => {
   scanError.value = '';
 
   try {
-    const QrScanner = await loadQrScannerModule();
-    const result = await QrScanner.scanImage(file, {
-      returnDetailedScanResult: true,
-    });
-    const text = typeof result === 'string' ? result : result?.data;
-
-    if (!text) {
-      throw new Error('Unable to decode QR.');
+    const texts = await detectTextsFromFile(file);
+    if (!texts.length) throw new Error('No QR detected.');
+    const hadNew = processDecodedTexts(texts);
+    if (!hadNew) {
+      scanError.value = '圖片中的 QR 不是統一發票格式，或已經掃描過了。';
     }
-
-    if (side === 'left' && leftData.value) {
-      leftData.value = null;
-      leftRawText.value = '';
-    }
-
-    if (side === 'right' && rightData.value) {
-      rightData.value = null;
-      rightRawText.value = '';
-    }
-
-    handleDecodedText(text);
-  } catch (error) {
-    scanError.value = side === 'left'
-      ? '這不是統一發票左側 QR'
-      : '這不是統一發票右側 QR';
+  } catch (_) {
+    scanError.value = '無法從圖片解碼 QR，請換一張更清晰的照片。';
   }
 };
 
@@ -233,7 +307,6 @@ onBeforeUnmount(() => {
 <template>
   <div class="tw-space-y-4">
     <div class="tw-flex tw-items-start tw-justify-between tw-gap-3">
-
       <div class="tw-flex tw-gap-2">
         <q-btn
           dense
@@ -258,18 +331,11 @@ onBeforeUnmount(() => {
     </div>
 
     <input
-      ref="leftFileInputRef"
+      ref="fileInputRef"
       class="tw-hidden"
       type="file"
       accept="image/*"
-      @change="handleFileDecode($event, 'left')"
-    >
-    <input
-      ref="rightFileInputRef"
-      class="tw-hidden"
-      type="file"
-      accept="image/*"
-      @change="handleFileDecode($event, 'right')"
+      @change="handleFileDecode"
     >
 
     <div class="tw-flex tw-items-center tw-gap-2">

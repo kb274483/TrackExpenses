@@ -34,6 +34,18 @@ const createMockResult = (file) => {
     date: getTodayDateString(),
     suggestedType: 'food',
     merchantName: baseName || 'Mock Merchant',
+    items: [
+      {
+        name: 'Sample Item A',
+        quantity: 1,
+        unitPrice: 120,
+      },
+      {
+        name: 'Sample Item B',
+        quantity: 1,
+        unitPrice: 125,
+      },
+    ],
     confidence: {
       amount: 0.94,
       date: 0.91,
