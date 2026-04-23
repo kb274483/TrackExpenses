@@ -145,12 +145,6 @@ const removeParticipant = (memberId) => {
     .filter((id) => id !== memberId);
 };
 
-const itemSummaryText = computed(() => {
-  const itemCount = expenseData.value.items?.length || 0;
-  if (itemCount === 0) return '尚無明細';
-  return `已載入 ${itemCount} 筆品項`;
-});
-
 const selectAllParticipants = () => {
   expenseData.value.involvedMembers = props.members.map((member) => member.value);
 };
@@ -379,11 +373,9 @@ const submitExpense = () => {
           :error="!expenseData.description && isSubmitted"
           error-message="Description is required"
         />
-        <div class="tw--mt-1 tw-flex tw-items-center tw-justify-end tw-gap-4">
-          <div class="tw-min-w-0 tw-text-xs tw-text-slate-500">
-            <div>{{ itemSummaryText }}</div>
-          </div>
+        <div class="tw-flex tw-items-center tw-justify-end tw-gap-1">
           <q-btn
+            size="10px"
             flat
             dense
             no-caps
