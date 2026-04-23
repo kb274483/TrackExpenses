@@ -200,6 +200,7 @@ const startCameraScan = async () => {
   scanError.value = '';
   scanWarning.value = '';
   isStartingCamera.value = true;
+  await nextTick();
 
   try {
     const videoElement = videoRef.value;
@@ -242,7 +243,8 @@ const startCameraScan = async () => {
     await qrScannerInstance.value.start();
     isCameraActive.value = true;
     scanStage.value = leftData.value ? 'scanning-right' : 'scanning-left';
-  } catch (_) {
+  } catch (error) {
+    console.error('[InvoiceQrScanner] startCameraScan failed:', error);
     scanError.value = '無法啟用相機，請改用圖片上傳解碼。';
     resetScannerInstance();
   } finally {
