@@ -48,14 +48,26 @@ const normalizeConfidence = (confidence = {}) => ({
   type: normalizeConfidenceValue(confidence.type),
 });
 
+const normalizeItemName = (value) => {
+  if (!value) return '';
+  return String(value).trim();
+};
+
+const normalizeItemNumber = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
 const normalizeScanItems = (items) => {
   if (!Array.isArray(items)) return undefined;
 
   const normalizedItems = items
     .map((item) => ({
-      name: item?.name ? String(item.name).trim() : '',
-      quantity: normalizeAmount(item?.quantity),
-      unitPrice: normalizeAmount(item?.unitPrice),
+      name: normalizeItemName(item?.name),
+      quantity: normalizeItemNumber(item?.quantity),
+      unitPrice: normalizeItemNumber(item?.unitPrice),
     }))
     .filter((item) => item.name || item.quantity !== null || item.unitPrice !== null);
 
@@ -82,6 +94,9 @@ export {
   normalizeAmount,
   normalizeConfidence,
   normalizeDate,
+  normalizeItemNumber,
+  normalizeItemName,
+  normalizeScanItems,
   normalizeScanResult,
   normalizeSuggestedType,
 };

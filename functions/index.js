@@ -52,12 +52,25 @@ const normalizeConfidence = (confidence = {}) => ({
   type: typeof confidence.type === 'number' ? confidence.type : 0,
 });
 
+const normalizeReceiptItems = (items) => {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item) => ({
+      name: item?.name ? String(item.name).trim() : '',
+      quantity: normalizeAmount(item?.quantity),
+      unitPrice: normalizeAmount(item?.unitPrice),
+    }))
+    .filter((item) => item.name || item.quantity !== null || item.unitPrice !== null);
+};
+
 const normalizeReceiptResult = (result = {}) => ({
   description: result.description || result.merchantName || '',
   amount: normalizeAmount(result.amount),
   date: normalizeDate(result.date),
   suggestedType: normalizeSuggestedType(result.suggestedType),
   merchantName: result.merchantName || '',
+  items: normalizeReceiptItems(result.items),
   confidence: normalizeConfidence(result.confidence),
   rawTextSnippet: result.rawTextSnippet || '',
 });
@@ -77,6 +90,19 @@ const receiptScanJsonSchema = {
         enum: Array.from(RECEIPT_CATEGORIES),
       },
       merchantName: { type: 'string' },
+      items: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            name: { type: 'string' },
+            quantity: { type: ['number', 'null'] },
+            unitPrice: { type: ['number', 'null'] },
+          },
+          required: ['name', 'quantity', 'unitPrice'],
+        },
+      },
       confidence: {
         type: 'object',
         additionalProperties: false,
@@ -96,6 +122,7 @@ const receiptScanJsonSchema = {
       'date',
       'suggestedType',
       'merchantName',
+      'items',
       'confidence',
       'rawTextSnippet',
     ],
@@ -133,6 +160,18 @@ const buildMockReceiptResult = (data = {}) => normalizeReceiptResult({
   date: dayjs().format('YYYY-MM-DD'),
   suggestedType: 'food',
   merchantName: 'Mock Merchant',
+  items: [
+    {
+      name: 'Mock Item A',
+      quantity: 1,
+      unitPrice: 120,
+    },
+    {
+      name: 'Mock Item B',
+      quantity: 1,
+      unitPrice: 125,
+    },
+  ],
   confidence: {
     amount: 0.94,
     date: 0.91,
@@ -173,7 +212,13 @@ const buildOpenAiReceiptPrompt = () => [
   '   - Prefer the merchant name in its original language; if the receipt clearly shows a single dominant item/service, you may use that instead.',
   '   - Do NOT translate Chinese or Japanese merchant names into English.',
   '',
-  '5. suggestedType (enum)',
+  '5. items (array)',
+  '   - Extract the main line items printed on the receipt when they are legible.',
+  '   - Each item must include: name (string), quantity (number | null), unitPrice (number | null).',
+  '   - Keep the original language for item names.',
+  '   - If the receipt does not show itemized lines clearly, return an empty array.',
+  '',
+  '6. suggestedType (enum)',
   '   - Must be exactly one of: transportation, food, entertainment, pets, housing, supplies, investment, shopping, other.',
   '   - Mapping hints:',
   '     * food: restaurants, cafes, groceries, convenience stores (7-11, FamilyMart, ローソン), 餐廳, 飲食店',
@@ -186,12 +231,12 @@ const buildOpenAiReceiptPrompt = () => [
   '     * investment: financial services, securities',
   '     * other: use only when no category clearly fits',
   '',
-  '6. confidence (object of numbers 0-1)',
+  '7. confidence (object of numbers 0-1)',
   '   - Honest self-assessment per field.',
   '   - Use < 0.5 when the value is guessed, the image is blurry, or the format is ambiguous.',
   '   - Use > 0.9 only when the field is explicitly and unambiguously printed.',
   '',
-  '7. rawTextSnippet (string)',
+  '8. rawTextSnippet (string)',
   '   - Copy the actual lines (in the original language and characters) that contain the total amount and the date, separated by " | ". This is used for debugging and user review.',
   '   - Keep under ~100 characters.',
   '',

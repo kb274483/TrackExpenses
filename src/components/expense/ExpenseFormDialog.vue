@@ -2,6 +2,8 @@
 import {
   computed, ref, watch,
 } from 'vue';
+import { normalizeScanItems } from 'src/api/scanResultShape';
+import ExpenseItemsEditorDialog from './ExpenseItemsEditorDialog.vue';
 import ReceiptScanPanel from './ReceiptScanPanel.vue';
 
 const props = defineProps({
@@ -37,6 +39,7 @@ const splitMethodOptions = [
 ];
 
 const isSubmitted = ref(false);
+const isItemsEditorOpen = ref(false);
 const expenseData = ref({});
 const splitValuesMap = ref({});
 const buildDefaultExpenseData = (source = {}) => ({
@@ -47,6 +50,7 @@ const buildDefaultExpenseData = (source = {}) => ({
   payer: source.payer || '',
   type: source.type || '',
   involvedMembers: Array.isArray(source.involvedMembers) ? [...source.involvedMembers] : [],
+  items: normalizeScanItems(source.items) || [],
   splitMethod: source.splitMethod || 'equal',
 });
 
@@ -117,6 +121,10 @@ const closeDialog = () => {
   emit('update:modelValue', false);
 };
 
+const openItemsEditor = () => {
+  isItemsEditorOpen.value = true;
+};
+
 const clearZero = () => {
   if (expenseData.value.amount === 0) {
     expenseData.value.amount = '';
@@ -136,6 +144,12 @@ const removeParticipant = (memberId) => {
   expenseData.value.involvedMembers = expenseData.value.involvedMembers
     .filter((id) => id !== memberId);
 };
+
+const itemSummaryText = computed(() => {
+  const itemCount = expenseData.value.items?.length || 0;
+  if (itemCount === 0) return '尚無明細';
+  return `已載入 ${itemCount} 筆品項`;
+});
 
 const selectAllParticipants = () => {
   expenseData.value.involvedMembers = props.members.map((member) => member.value);
@@ -310,6 +324,12 @@ const applyScannedResult = (result) => {
   if (mappedType) {
     expenseData.value.type = mappedType;
   }
+
+  expenseData.value.items = normalizeScanItems(result.items) || [];
+};
+
+const saveItems = (items) => {
+  expenseData.value.items = items;
 };
 
 const submitExpense = () => {
@@ -327,6 +347,7 @@ const submitExpense = () => {
     amount: Number(expenseData.value.amount),
     involvedMembers: [...expenseData.value.involvedMembers],
     splitMethod: expenseData.value.splitMethod || 'equal',
+    items: normalizeScanItems(expenseData.value.items) || [],
     splits: expenseData.value.splitMethod === 'equal'
       ? null
       : expenseData.value.involvedMembers.map((memberId) => ({
@@ -345,8 +366,8 @@ const submitExpense = () => {
     persistent
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
-      <q-card-section class="tw-space-y-1">
+    <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2 tw-pb-12">
+      <q-card-section>
         <div class="tw-flex tw-items-center tw-justify-between tw-gap-3">
           <div class="text-h6">{{ isEditMode ? 'Edit' : 'Add' }} Expense</div>
           <ReceiptScanPanel @scanned="applyScannedResult" />
@@ -358,6 +379,19 @@ const submitExpense = () => {
           :error="!expenseData.description && isSubmitted"
           error-message="Description is required"
         />
+        <div class="tw--mt-1 tw-flex tw-items-center tw-justify-end tw-gap-4">
+          <div class="tw-min-w-0 tw-text-xs tw-text-slate-500">
+            <div>{{ itemSummaryText }}</div>
+          </div>
+          <q-btn
+            flat
+            dense
+            no-caps
+            color="primary"
+            label="查看明細"
+            @click="openItemsEditor"
+          />
+        </div>
         <q-input
           v-model="expenseData.amount"
           label="Amount"
@@ -496,4 +530,10 @@ const submitExpense = () => {
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <ExpenseItemsEditorDialog
+    v-model="isItemsEditorOpen"
+    :items="expenseData.items || []"
+    @save="saveItems"
+  />
 </template>
