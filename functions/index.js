@@ -61,7 +61,9 @@ const normalizeReceiptItems = (items) => {
       quantity: normalizeAmount(item?.quantity),
       unitPrice: normalizeAmount(item?.unitPrice),
     }))
-    .filter((item) => item.name || item.quantity !== null || item.unitPrice !== null);
+    .filter(
+      (item) => item.name || item.quantity !== null || item.unitPrice !== null,
+    );
 };
 
 const normalizeReceiptResult = (result = {}) => ({
@@ -215,7 +217,7 @@ const buildOpenAiReceiptPrompt = () => [
   '5. items (array)',
   '   - Extract the main line items printed on the receipt when they are legible.',
   '   - Each item must include: name (string), quantity (number | null), unitPrice (number | null).',
-  '   - Keep the original language for item names.',
+  '   - Translate the item name into Traditional Chinese (繁體中文). If the original is already Traditional Chinese, keep it; if Simplified Chinese, convert to Traditional; if English/Japanese/other, translate naturally (e.g. "Latte" → "拿鐵", "からあげ" → "炸雞"). Keep brand/product proper nouns as-is when no sensible Chinese equivalent exists.',
   '   - If the receipt does not show itemized lines clearly, return an empty array.',
   '',
   '6. suggestedType (enum)',
