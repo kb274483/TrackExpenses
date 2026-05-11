@@ -400,6 +400,7 @@ const submitExpense = () => {
           v-model="expenseData.payer"
           :options="members"
           label="Select Payer"
+          behavior="dialog"
           option-value="value"
           option-label="label"
           :error="!expenseData.payer && isSubmitted"
@@ -409,6 +410,7 @@ const submitExpense = () => {
           v-model="expenseData.type"
           :options="expenseTypes"
           label="Expense Type"
+          behavior="dialog"
           :error="!expenseData.type && isSubmitted"
           error-message="Type is required"
         />
@@ -423,6 +425,7 @@ const submitExpense = () => {
           v-model="expenseData.involvedMembers"
           :options="members"
           label="Participants"
+          behavior="dialog"
           multiple
           option-value="value"
           option-label="label"
