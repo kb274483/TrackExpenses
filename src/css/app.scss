@@ -1,24 +1,258 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..800,100&family=Nunito:wght@400;500;600;700;800&display=swap');
+
 // app global css in SCSS form
+
+:root {
+  --organic-background: #FDFCF8;
+  --organic-surface: #FEFEFA;
+  --organic-foreground: #2C2C24;
+  --organic-primary: #5D7052;
+  --organic-primary-foreground: #F3F4F1;
+  --organic-secondary: #C18C5D;
+  --organic-secondary-foreground: #FFFFFF;
+  --organic-accent: #E6DCCD;
+  --organic-accent-foreground: #4A4A40;
+  --organic-muted: #F0EBE5;
+  --organic-muted-foreground: #78786C;
+  --organic-border: #DED8CF;
+  --organic-destructive: #A85448;
+  --organic-shadow-soft: 0 4px 20px -2px rgba(93, 112, 82, 0.15);
+  --organic-shadow-float: 0 10px 40px -10px rgba(193, 140, 93, 0.2);
+  --organic-font-heading: 'Fraunces', Georgia, serif;
+  --organic-font-body: 'Nunito', 'Quicksand', system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--organic-background);
+  color: var(--organic-foreground);
+  font-family: var(--organic-font-body);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(44, 44, 36, 0.45) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 30%, rgba(93, 112, 82, 0.35) 0 1px, transparent 1px),
+    radial-gradient(circle at 45% 80%, rgba(193, 140, 93, 0.32) 0 1px, transparent 1px);
+  background-size: 34px 34px, 46px 46px, 58px 58px;
+}
+
+html.dark body::before,
+body.body--dark::before {
+  content: none !important;
+  display: none !important;
+}
+
+.q-page-container {
+  background:
+    radial-gradient(circle at top left, rgba(230, 220, 205, 0.65), transparent 32rem),
+    radial-gradient(circle at bottom right, rgba(93, 112, 82, 0.12), transparent 34rem),
+    var(--organic-background);
+}
 
 // Dark mode overrides for Tailwind utility classes
 // Quasar 的 body.body--dark 會在啟用深色模式時加到 <body>
 // 這裡針對專案大量使用的灰階 / 白底樣式做反轉
+html.dark,
 body.body--dark {
-  .tw-text-gray-400 { color: rgb(107 114 128) !important; }
-  .tw-text-gray-500 { color: rgb(156 163 175) !important; }
+  --organic-background: #11160F;
+  --organic-surface: #273121;
+  --organic-foreground: #FFFDF4;
+  --organic-primary: #ECF8D8;
+  --organic-primary-foreground: #10160D;
+  --organic-secondary: #FFD59A;
+  --organic-accent: #3A442F;
+  --organic-accent-foreground: #F5F1E8;
+  --organic-muted: #36422F;
+  --organic-muted-foreground: #F4EAD9;
+  --organic-border: #8D836D;
+  --organic-shadow-soft: 0 1px 0 rgba(255, 248, 234, 0.08);
+  --organic-shadow-float: 0 16px 34px -24px rgba(0, 0, 0, 0.72);
+
+  .q-page-container {
+    background: var(--organic-background);
+  }
+
+  .tw-text-gray-400 { color: rgb(209 213 219) !important; }
+  .tw-text-gray-500 { color: rgb(203 213 225) !important; }
   .tw-text-gray-600,
-  .tw-text-gray-700 { color: rgb(209 213 219) !important; }
+  .tw-text-gray-700 { color: rgb(226 232 240) !important; }
 
-  .tw-bg-white { background-color: rgb(31 41 55) !important; }
-  .tw-bg-gray-50 { background-color: rgb(55 65 81) !important; }
-  .tw-bg-gray-100 { background-color: rgb(55 65 81) !important; }
+  .tw-bg-white { background-color: var(--organic-surface) !important; }
+  .tw-bg-gray-50 { background-color: var(--organic-muted) !important; }
+  .tw-bg-gray-100 { background-color: var(--organic-muted) !important; }
 
-  .tw-border-gray-200 { border-color: rgb(75 85 99) !important; }
-  .tw-border-gray-300 { border-color: rgb(75 85 99) !important; }
+  .tw-border-gray-200 { border-color: var(--organic-border) !important; }
+  .tw-border-gray-300 { border-color: var(--organic-border) !important; }
 
   // q-btn 用 text-color="white" + color="white"（白底）的情況下，
   // dark mode 要改成深色底 + 淺色字，避免白底白字看不到
   .q-btn[class*="bg-white"] {
-    background-color: rgb(55 65 81) !important;
+    background-color: var(--organic-muted) !important;
+  }
+
+  .app-toolbar {
+    border-color: rgba(255, 253, 244, 0.22) !important;
+    background: rgba(25, 31, 22, 0.98) !important;
+    box-shadow: none !important;
+  }
+
+  .app-brand__mark {
+    background: var(--organic-primary) !important;
+    box-shadow: none !important;
+  }
+
+  .iconStyle {
+    color: var(--organic-primary-foreground) !important;
+  }
+
+  .app-brand__text,
+  .app-icon-button {
+    color: var(--organic-foreground) !important;
+  }
+
+  .app-icon-button:hover {
+    background: rgba(215, 232, 195, 0.12) !important;
+  }
+
+  .app-drawer {
+    border-right-color: rgba(255, 253, 244, 0.18) !important;
+    background: var(--organic-surface) !important;
+  }
+
+  .app-nav__item,
+  .app-nav__group {
+    border-color: rgba(255, 253, 244, 0.18) !important;
+    background: rgba(255, 253, 244, 0.09) !important;
+    color: var(--organic-foreground) !important;
+  }
+
+  .app-nav__item:hover,
+  .app-nav__group:hover {
+    background: rgba(215, 232, 195, 0.1) !important;
+  }
+
+  .app-nav__group-title {
+    color: var(--organic-foreground) !important;
+  }
+
+  .app-nav__icon {
+    background: rgba(215, 232, 195, 0.14) !important;
+    color: var(--organic-primary) !important;
+  }
+
+  .app-nav__subicon {
+    background: rgba(240, 196, 139, 0.14) !important;
+    color: var(--organic-secondary) !important;
+  }
+
+  .app-nav__subitem {
+    color: var(--organic-muted-foreground) !important;
+  }
+
+  .home-card {
+    border-color: rgba(255, 253, 244, 0.18) !important;
+    background: var(--organic-surface) !important;
+    box-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.9) !important;
+  }
+
+  .home-card__title,
+  .home-card__subtitle {
+    color: var(--organic-foreground) !important;
+  }
+
+  .home-card__subtitle {
+    color: var(--organic-muted-foreground) !important;
+  }
+
+  .home-card__separator {
+    background: rgba(255, 253, 244, 0.16) !important;
+  }
+
+  .home-action--primary {
+    background: var(--organic-primary) !important;
+    color: var(--organic-primary-foreground) !important;
+    box-shadow: none !important;
+  }
+
+  .home-action--outline {
+    border-color: rgba(255, 213, 154, 0.72) !important;
+    background: rgba(255, 213, 154, 0.1) !important;
+    color: var(--organic-secondary) !important;
+  }
+
+  .home-page__blob--moss {
+    background: rgba(236, 248, 216, 0.08) !important;
+  }
+
+  .home-page__blob--clay {
+    background: rgba(255, 213, 154, 0.06) !important;
+  }
+
+  .home-card::before {
+    background: rgba(236, 248, 216, 0.06) !important;
+  }
+
+  .home-card__eyebrow {
+    border-color: rgba(255, 213, 154, 0.44) !important;
+    background: rgba(255, 213, 154, 0.12) !important;
+    color: var(--organic-secondary) !important;
+  }
+
+  .organic-input .q-field__control {
+    background: rgba(255, 248, 234, 0.08) !important;
+    color: var(--organic-foreground) !important;
+  }
+
+  .organic-input .q-field__control::before {
+    border-color: rgba(255, 253, 244, 0.28) !important;
+  }
+
+  .organic-input .q-field__label,
+  .organic-input .q-field__native {
+    color: var(--organic-foreground) !important;
+  }
+
+  .login-page__blob {
+    opacity: 0.18 !important;
+  }
+
+  .login-page__blob--moss {
+    background: rgba(236, 248, 216, 0.08) !important;
+  }
+
+  .login-page__blob--clay {
+    background: rgba(255, 213, 154, 0.06) !important;
+  }
+
+  .login-card {
+    border-color: rgba(255, 253, 244, 0.18) !important;
+    background: var(--organic-surface) !important;
+    box-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.9) !important;
+    color: var(--organic-foreground) !important;
+  }
+
+  .login-card__title {
+    color: var(--organic-foreground) !important;
+  }
+
+  .login-card__accent {
+    color: var(--organic-secondary) !important;
+  }
+
+  .login-card__footer {
+    border-top-color: rgba(255, 253, 244, 0.16) !important;
+  }
+
+  .login-card__button {
+    background: var(--organic-primary) !important;
+    color: var(--organic-primary-foreground) !important;
   }
 }

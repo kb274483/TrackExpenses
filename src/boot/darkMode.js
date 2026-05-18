@@ -6,10 +6,15 @@ const STORAGE_KEY = 'accounting-pwa-dark-mode';
 // 同步 Quasar dark 狀態到 html 的 class，讓 Tailwind 的 dark: variant 也生效
 const syncHtmlClass = (isDark) => {
   const root = document.documentElement;
+  const { body } = document;
   if (isDark) {
     root.classList.add('dark');
+    body.classList.add('body--dark');
+    root.style.colorScheme = 'dark';
   } else {
     root.classList.remove('dark');
+    body.classList.remove('body--dark');
+    root.style.colorScheme = 'light';
   }
 };
 

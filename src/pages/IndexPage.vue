@@ -1,64 +1,99 @@
 <template>
-  <q-page class="tw-flex tw-justify-center tw-items-center">
-    <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2 tw-mx-4 bg-secondary tw-text-white">
-      <q-card-section>
-        <div class="tw-text-2xl tw-text-center">
+  <q-page class="home-page">
+    <div class="home-page__blob home-page__blob--moss" />
+    <div class="home-page__blob home-page__blob--clay" />
+
+    <q-card class="home-card">
+      <q-card-section class="home-card__header">
+        <div class="home-card__eyebrow">
+          Track expenses
+        </div>
+        <div class="home-card__title">
           Choose to join or create.
         </div>
-        <div class="tw-text-sm tw-text-center">
+        <div class="home-card__subtitle">
           a group to start managing expenses.
         </div>
       </q-card-section>
 
-      <q-separator color='white' inset />
+      <q-separator class="home-card__separator" inset />
 
-      <q-card-actions vertical class="tw-mx-2">
+      <q-card-actions vertical class="home-card__actions">
         <q-btn flat align="start"
-          class="tw-mb-1"
-          style="background-color: white; color: #555555;"
+          class="home-action home-action--primary"
           @click="showCreateGroup = true"
         >
-          <q-icon name="group_add" class="tw-mr-4" />
+          <q-icon name="group_add" class="home-action__icon" />
           <span>Create group</span>
         </q-btn>
 
         <!-- <q-separator inset /> -->
 
         <q-btn flat align="start"
-          style="background-color: white; color: #555555;"
+          class="home-action home-action--outline"
           @click="showJoinGroup = true"
         >
-          <q-icon name="person_add" class="tw-mr-4" />
+          <q-icon name="person_add" class="home-action__icon" />
           <span>Join group</span>
         </q-btn>
       </q-card-actions>
 
       <!-- 創建群組對話框 -->
       <q-dialog persistent v-model="showCreateGroup" >
-        <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
-          <q-card-section>
-            <div class="text-h6">Create a Group</div>
-            <q-input v-model="groupName" label="Group Name" filled />
+        <q-card class="group-dialog">
+          <q-card-section class="group-dialog__body">
+            <div class="group-dialog__title">Create a Group</div>
+            <q-input
+              v-model="groupName"
+              label="Group Name"
+              filled
+              class="organic-input"
+            />
           </q-card-section>
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cancel" color="negative" @click="showCreateGroup = false" />
-            <q-btn flat label="Create" color="primary" @click="createGroup" />
+          <q-card-actions align="right" class="group-dialog__actions">
+            <q-btn
+              flat
+              label="Cancel"
+              class="dialog-action dialog-action--ghost"
+              @click="showCreateGroup = false"
+            />
+            <q-btn
+              flat
+              label="Create"
+              class="dialog-action dialog-action--primary"
+              @click="createGroup"
+            />
           </q-card-actions>
         </q-card>
       </q-dialog>
 
       <!-- 加入群組對話框 -->
       <q-dialog persistent v-model="showJoinGroup">
-        <q-card class="tw-w-full xs:tw-w-2/3 lg:tw-w-1/2">
-          <q-card-section>
-            <div class="text-h6">Join a Group</div>
-            <q-input v-model="joinGroupId" label="Group ID" filled />
+        <q-card class="group-dialog">
+          <q-card-section class="group-dialog__body">
+            <div class="group-dialog__title">Join a Group</div>
+            <q-input
+              v-model="joinGroupId"
+              label="Group ID"
+              filled
+              class="organic-input"
+            />
           </q-card-section>
 
-          <q-card-actions align="right">
-            <q-btn flat label="Cancel" color="negative" @click="showJoinGroup = false" />
-            <q-btn flat label="Join" color="primary" @click="joinGroup" />
+          <q-card-actions align="right" class="group-dialog__actions">
+            <q-btn
+              flat
+              label="Cancel"
+              class="dialog-action dialog-action--ghost"
+              @click="showJoinGroup = false"
+            />
+            <q-btn
+              flat
+              label="Join"
+              class="dialog-action dialog-action--primary"
+              @click="joinGroup"
+            />
           </q-card-actions>
         </q-card>
       </q-dialog>
@@ -224,3 +259,251 @@ const joinGroup = async () => {
   }
 };
 </script>
+
+<style lang="scss" scoped>
+.home-page {
+  position: relative;
+  display: flex;
+  min-height: calc(100vh - 50px);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 6rem 1rem;
+  color: var(--organic-foreground);
+}
+
+.home-page__blob {
+  position: absolute;
+  pointer-events: none;
+  filter: blur(30px);
+  opacity: 0.42;
+}
+
+.home-page__blob--moss {
+  top: 8%;
+  left: 8%;
+  width: min(34vw, 24rem);
+  aspect-ratio: 1;
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  background: rgba(93, 112, 82, 0.22);
+}
+
+.home-page__blob--clay {
+  right: 6%;
+  bottom: 8%;
+  width: min(42vw, 28rem);
+  aspect-ratio: 1;
+  border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  background: rgba(193, 140, 93, 0.2);
+}
+
+.home-card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 34rem);
+  overflow: hidden;
+  border: 1px solid rgba(222, 216, 207, 0.72);
+  border-radius: 3.2rem 2rem 4.4rem 2.4rem;
+  background:
+    linear-gradient(145deg, rgba(254, 254, 250, 0.96), rgba(240, 235, 229, 0.78));
+  box-shadow: var(--organic-shadow-float);
+  color: var(--organic-foreground);
+}
+
+.home-card::before {
+  content: '';
+  position: absolute;
+  inset: 1rem auto auto 1.25rem;
+  width: 6.5rem;
+  aspect-ratio: 1;
+  border-radius: 67% 33% 45% 55% / 52% 44% 56% 48%;
+  background: rgba(230, 220, 205, 0.62);
+}
+
+.home-card__header {
+  position: relative;
+  padding: 3rem 2rem 2rem;
+  text-align: center;
+}
+
+.home-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.25rem 1rem;
+  border: 1px solid rgba(193, 140, 93, 0.36);
+  border-radius: 999px;
+  background: rgba(230, 220, 205, 0.44);
+  color: var(--organic-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.home-card__title {
+  margin-top: 1.25rem;
+  color: var(--organic-foreground);
+  font-family: var(--organic-font-heading);
+  font-size: clamp(2.25rem, 8vw, 3.8rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.home-card__subtitle {
+  max-width: 18rem;
+  margin: 1rem auto 0;
+  color: var(--organic-muted-foreground);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.home-card__separator {
+  background: rgba(222, 216, 207, 0.82);
+}
+
+.home-card__actions {
+  gap: 0.8rem;
+  padding: 1.4rem 1.35rem 1.65rem;
+}
+
+.home-action {
+  min-height: 3.55rem;
+  border-radius: 999px;
+  font-family: var(--organic-font-body);
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: none;
+  transition: transform 300ms ease, box-shadow 300ms ease, background 300ms ease;
+}
+
+.home-action:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+.home-action:active {
+  transform: scale(0.97);
+}
+
+.home-action--primary {
+  background: var(--organic-primary);
+  box-shadow: var(--organic-shadow-soft);
+  color: var(--organic-primary-foreground);
+}
+
+.home-action--primary:hover {
+  box-shadow: 0 10px 28px -8px rgba(93, 112, 82, 0.38);
+}
+
+.home-action--outline {
+  border: 2px solid rgba(193, 140, 93, 0.78);
+  background: rgba(255, 255, 255, 0.38);
+  color: var(--organic-secondary);
+}
+
+.home-action--outline:hover {
+  background: rgba(193, 140, 93, 0.1);
+  box-shadow: 0 8px 24px -14px rgba(193, 140, 93, 0.48);
+}
+
+.home-action__icon {
+  margin-right: 1rem;
+  font-size: 1.45rem;
+}
+
+.group-dialog {
+  width: min(calc(100vw - 2rem), 32rem);
+  border: 1px solid rgba(222, 216, 207, 0.75);
+  border-radius: 2.2rem 3.6rem 2.4rem 2rem;
+  background: var(--organic-surface);
+  box-shadow: var(--organic-shadow-float);
+  color: var(--organic-foreground);
+}
+
+.group-dialog__body {
+  padding: 2rem 1.6rem 1rem;
+}
+
+.group-dialog__title {
+  margin-bottom: 1.25rem;
+  color: var(--organic-foreground);
+  font-family: var(--organic-font-heading);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.group-dialog__actions {
+  gap: 0.6rem;
+  padding: 0 1.4rem 1.4rem;
+}
+
+.dialog-action {
+  min-height: 2.75rem;
+  border-radius: 999px;
+  padding-inline: 1.25rem;
+  font-weight: 800;
+  text-transform: none;
+  transition: transform 250ms ease, background 250ms ease;
+}
+
+.dialog-action:active {
+  transform: scale(0.96);
+}
+
+.dialog-action--ghost {
+  color: var(--organic-destructive);
+}
+
+.dialog-action--ghost:hover {
+  background: rgba(168, 84, 72, 0.1);
+}
+
+.dialog-action--primary {
+  background: var(--organic-primary);
+  color: var(--organic-primary-foreground);
+  box-shadow: var(--organic-shadow-soft);
+}
+
+.organic-input :deep(.q-field__control) {
+  min-height: 3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.52);
+  color: var(--organic-foreground);
+}
+
+.organic-input :deep(.q-field__control::before) {
+  border-color: var(--organic-border);
+}
+
+.organic-input :deep(.q-field__control::after) {
+  border-color: rgba(93, 112, 82, 0.48);
+}
+
+.organic-input :deep(.q-field__label),
+.organic-input :deep(.q-field__native) {
+  color: var(--organic-muted-foreground);
+  font-family: var(--organic-font-body);
+}
+
+@media (max-width: 640px) {
+  .home-page {
+    align-items: flex-start;
+    min-height: calc(100vh - 50px);
+    padding: 5.25rem 1rem 2rem;
+  }
+
+  .home-card {
+    border-radius: 2.4rem 1.65rem 3.1rem 1.8rem;
+  }
+
+  .home-card__header {
+    padding: 2.4rem 1.35rem 1.65rem;
+  }
+
+  .home-card__actions {
+    padding-inline: 1rem;
+  }
+}
+</style>
