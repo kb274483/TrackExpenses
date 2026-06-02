@@ -51,7 +51,7 @@
           </q-item-label>
           <q-item-label>
             <div class="tw-grid tw-grid-cols-2 tw-gap-2">
-              <strong>$:{{ record.amount }}</strong>
+              <strong>$:{{ formatAmount(record.amount) }}</strong>
               <span>{{ record.date.split('-')[1] }}-{{record.date.split('-')[2]}}</span>
             </div>
           </q-item-label>
@@ -82,7 +82,7 @@
         <q-card-section>
           <div class="tw-text-gray-600 tw-text-lg">你確定要刪除這筆消費嗎？</div>
           <div class="tw-font-bold tw-mt-2">
-            {{ recordToDelete?.description }} - ${{ recordToDelete?.amount }}
+            {{ recordToDelete?.description }} - ${{ formatAmount(recordToDelete?.amount) }}
           </div>
         </q-card-section>
 
@@ -106,6 +106,7 @@ import dayjs from 'dayjs';
 import { useRoute } from 'vue-router';
 import { getAuth } from 'firebase/auth';
 import { generateMonths } from 'src/utils/generateDate';
+import { formatAmount } from 'src/utils/formatAmount';
 import ExpenseFormDialog from 'src/components/expense/ExpenseFormDialog.vue';
 
 // 儲存DB監聽器

@@ -38,7 +38,9 @@
         >
           <q-item-label class="tw-flex tw-items-center">
             <span class="tw-font-semibold tw-mr-2">{{ total.member }}</span>
-            <span class="tw-font-bold tw-text-red-500">$：{{ formatAmount(total.amount) }}</span>
+            <span class="tw-font-bold tw-text-red-500">
+              $：{{ formatAmount(total.amount, conversionRate) }}
+            </span>
           </q-item-label>
         </q-item>
       </q-list>
@@ -58,7 +60,9 @@
           <q-icon name="money" class="tw-text-gray-600 tw-text-3xl" />
           <q-icon name="arrow_forward" class="tw-text-gray-600 tw-text-2xl" />
           <span class="tw-font-semibold tw-text-primary">{{ settlement.receiver }}</span>
-          <span class="tw-font-bold tw-text-red-500"> ${{ formatAmount(settlement.amount) }}</span>
+          <span class="tw-font-bold tw-text-red-500">
+            ${{ formatAmount(settlement.amount, conversionRate) }}
+          </span>
         </q-item-label>
         <q-checkbox
           keep-color size="lg"
@@ -82,6 +86,7 @@ import {
 } from 'src/boot/firebase';
 import { getAuth } from 'firebase/auth';
 import { generateMonths } from 'src/utils/generateDate';
+import { formatAmount } from 'src/utils/formatAmount';
 import axios from 'axios';
 
 // 獲取當前用戶
@@ -376,15 +381,6 @@ const fetchConversionRate = async (fromCurrency) => {
 
 const onCurrencyChange = async (val) => {
   await fetchConversionRate(val);
-};
-
-// 將金額依據 conversionRate 轉為 TWD，四捨五入並加上千分位
-const formatAmount = (amount) => {
-  const num = Number(amount) || 0;
-  const converted = Math.round(num * Number(conversionRate.value || 1));
-  return Number.isFinite(converted)
-    ? converted.toLocaleString('zh-TW')
-    : '0';
 };
 
 watch(

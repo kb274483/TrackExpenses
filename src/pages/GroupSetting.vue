@@ -41,7 +41,12 @@
         <div class="tw-grid tw-grid-cols-6 tw-gap-2">
           <div class="tw-col-span-2">
             <span class="block tw-font-bold">{{ expense.name }}</span>
-            {{ expense.amount }} 元
+            {{ formatAmount(expense.amount) }} 元 / 期
+            <span v-if="expense.installments"
+              class="block"
+            >
+              剩餘 {{ expense.paymentTerms }} 期
+            </span>
           </div>
           <div class="tw-col-span-3">
             <span class="block">{{ expense.date.label }}</span>
@@ -170,6 +175,7 @@ import {
   db, ref as dbRef, get, set, push,
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
+import { formatAmount } from 'src/utils/formatAmount';
 
 // 狀態變數
 const tab = ref('fixedExpense');
