@@ -410,6 +410,18 @@ exports.autoAddFixedExpenses = functions.pubsub
         // 將固定支出新增至當月的消費紀錄中
         todayExpenses.forEach(async ([expenseId, expense]) => {
           const expenseRecordId = Date.now().toString(); // 產生新的消費記錄 ID
+          const groupMembers = groupData.members ? Object.values(groupData.members) : [];
+          const involvedMemberIds = Array.isArray(expense.involvedMembers)
+            && expense.involvedMembers.length > 0
+            ? expense.involvedMembers
+            : groupMembers.map((member) => member.id);
+          const involvedMembers = groupMembers
+            .filter((member) => involvedMemberIds.includes(member.id))
+            .map((member) => ({
+              label: member.name,
+              value: member.id,
+            }));
+          const splitMethod = expense.splitMethod || 'equal';
           const newExpense = {
             id: expenseRecordId,
             description: expense.name,
@@ -419,12 +431,12 @@ exports.autoAddFixedExpenses = functions.pubsub
               label: expense.payerId.label,
               value: expense.payerId.value,
             },
-            members: groupData.members
-              ? Object.values(groupData.members).map((member) => ({
-                label: member.name,
-                value: member.id,
-              }))
-              : [],
+            members: involvedMembers,
+            involvedMembers: involvedMemberIds,
+            splitMethod,
+            splits: splitMethod === 'equal' || !Array.isArray(expense.splits)
+              ? null
+              : expense.splits,
             type: { icon: 'stars', label: 'Fixed Expense', value: 'fixed' },
           };
 

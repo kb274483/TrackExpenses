@@ -47,10 +47,20 @@
             >
               剩餘 {{ expense.paymentTerms }} 期
             </span>
+            <q-chip
+              v-if="expense.splitMethod && expense.splitMethod !== 'equal'"
+              dense square size="sm"
+              color="primary" text-color="white"
+              :label="getSplitMethodLabel(expense.splitMethod)"
+              class="tw-mt-1"
+            />
           </div>
           <div class="tw-col-span-3">
             <span class="block">{{ expense.date.label }}</span>
             <span class="tw-font-bold">{{ getMemberName(expense.payerId.value) }}</span> 付款
+            <span class="block tw-text-xs tw-text-gray-500">
+              參與 {{ getFixedExpenseParticipantCount(expense) }} 人
+            </span>
           </div>
           <q-btn icon="delete" color="negative" flat @click="deleteFixedExpense(expense.id)" />
         </div>
@@ -97,6 +107,16 @@
             option-value="value" option-label="label"
             :error="!expenseData.payerId && isSubmitted"
             error-message="必須選擇付款人"
+          />
+          <ExpenseSplitEditor
+            v-model:participants="expenseData.involvedMembers"
+            v-model:split-method="expenseData.splitMethod"
+            v-model:split-values="splitValuesMap"
+            v-model:valid="splitValid"
+            :amount="expenseData.amount"
+            :members="memberOptions"
+            :submitted="isSubmitted"
+            participants-label="固定支出參與者"
           />
           <q-toggle
             v-model="expenseData.installments"
@@ -176,6 +196,8 @@ import {
 } from 'src/boot/firebase';
 import { useRoute } from 'vue-router';
 import { formatAmount } from 'src/utils/formatAmount';
+import { normalizeSplits } from 'src/utils/expenseSplits';
+import ExpenseSplitEditor from 'src/components/expense/ExpenseSplitEditor.vue';
 
 // 狀態變數
 const tab = ref('fixedExpense');
@@ -186,6 +208,8 @@ const expenseData = ref({
   amount: 0,
   date: '',
   payerId: '',
+  involvedMembers: [],
+  splitMethod: 'equal',
   installments: false,
   paymentTerms: 1,
 });
@@ -196,6 +220,8 @@ const members = ref([]);
 const memberOptions = ref([]);
 const dateOptions = ref([]);
 const isSubmitted = ref(false);
+const splitValuesMap = ref({});
+const splitValid = ref(true);
 
 // 圖示選項
 const iconOptions = ref([
@@ -235,11 +261,15 @@ for (let i = 1; i <= 31; i++) {
 // 開啟新增固定支出對話框
 const openFixedExpenseDialog = () => {
   showFixedExpenseDialog.value = true;
+  splitValuesMap.value = {};
+  splitValid.value = true;
   expenseData.value = {
     name: '',
     amount: 0,
     date: '',
     payerId: '',
+    involvedMembers: memberOptions.value.map((member) => member.value),
+    splitMethod: 'equal',
     installments: false,
     paymentTerms: 1,
   };
@@ -268,6 +298,19 @@ const fetchMembers = async () => {
 const getMemberName = (memberId) => {
   const member = members.value.find((m) => m.id === memberId);
   return member ? member.name : '未知成員';
+};
+
+const getSplitMethodLabel = (method) => {
+  const map = { shares: '份數', exact: '指定金額', percentage: '百分比' };
+  return map[method] || '';
+};
+
+const getFixedExpenseParticipantCount = (expense) => {
+  if (Array.isArray(expense.involvedMembers) && expense.involvedMembers.length > 0) {
+    return expense.involvedMembers.length;
+  }
+
+  return memberOptions.value.length;
 };
 
 // 取得自定義消費類型
@@ -320,6 +363,9 @@ const saveFixedExpense = async () => {
     || !expenseData.value.amount
     || !expenseData.value.date
     || !expenseData.value.payerId
+    || !expenseData.value.involvedMembers
+    || expenseData.value.involvedMembers.length === 0
+    || !splitValid.value
   ) {
     return;
   }
@@ -327,8 +373,18 @@ const saveFixedExpense = async () => {
     return;
   }
   const fixedExpensesID = Date.now().toString();
-  expenseData.value.id = fixedExpensesID;
-  const updatedExpenses = expenseData.value;
+  const updatedExpenses = {
+    ...expenseData.value,
+    id: fixedExpensesID,
+    amount: Number(expenseData.value.amount),
+    involvedMembers: [...expenseData.value.involvedMembers],
+    splitMethod: expenseData.value.splitMethod || 'equal',
+    splits: normalizeSplits(
+      expenseData.value.splitMethod,
+      expenseData.value.involvedMembers,
+      splitValuesMap.value,
+    ),
+  };
   const groupSettingsRef = dbRef(db, `/groups/${watchGroupName.value}/groupSettings/fixedExpenses/${fixedExpensesID}`);
   await set(groupSettingsRef, updatedExpenses);
   fixedExpenses.value = [...fixedExpenses.value, updatedExpenses];
